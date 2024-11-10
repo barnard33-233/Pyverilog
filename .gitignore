@@ -4,3 +4,4 @@ parsetab.py
 .DS_Store
 .AppleDouble
 .LSOverride
+.vscode/*
