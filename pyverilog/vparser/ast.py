@@ -14,74 +14,74 @@
    limitations under the License.
 """
 
-from __future__ import absolute_import
-from __future__ import print_function
+from abc import ABC, abstractmethod
+from typing import List, Any, Optional, Tuple
 import sys
-import re
 
 
-class Node(object):
-    """ Abstact class for every element in parser """
+class Node(ABC):
+    """Abstact class for every element in parser"""
 
-    def children(self):
-        pass
+    attr_names: Tuple[str, ...] = ()
+    lineno: Optional[int] = None
+    end_lineno: Optional[int] = None
 
-    def show(self, buf=sys.stdout, offset=0, attrnames=False, showlineno=True):
+    @abstractmethod
+    def children(self) -> tuple["Node"]:
+        """Returns a tuple of child nodes."""
+        raise NotImplementedError
+
+    def show(
+        self,
+        buf=sys.stdout,
+        offset: int = 0,
+        attrnames: bool = False,
+        showlineno: bool = True,
+    ) -> None:
         indent = 2
-        lead = ' ' * offset
-
-        buf.write(lead + self.__class__.__name__ + ': ')
+        lead = " " * offset
+        buf.write(lead + self.__class__.__name__ + ": ")
 
         if self.attr_names:
             if attrnames:
                 nvlist = [(n, getattr(self, n)) for n in self.attr_names]
-                attrstr = ', '.join('%s=%s' % (n, v) for (n, v) in nvlist)
+                attrstr = ", ".join(f"{n}={v}" for n, v in nvlist)
             else:
                 vlist = [getattr(self, n) for n in self.attr_names]
-                attrstr = ', '.join('%s' % v for v in vlist)
+                attrstr = ", ".join(str(v) for v in vlist)
             buf.write(attrstr)
 
-        if showlineno:
-            if hasattr(self, 'end_lineno'):
-                buf.write(' (from %s to %s)' % (self.lineno, self.end_lineno))
+        if showlineno and self.lineno is not None:
+            if self.end_lineno is not None:
+                buf.write(f" (from {self.lineno} to {self.end_lineno})")
             else:
-                buf.write(' (at %s)' % self.lineno)
+                buf.write(f" (at {self.lineno})")
 
-        buf.write('\n')
+        buf.write("\n")
 
-        for c in self.children():
-            c.show(buf, offset + indent, attrnames, showlineno)
+        for child in self.children():
+            child.show(buf, offset + indent, attrnames, showlineno)
 
-    def __eq__(self, other):
-        if type(self) != type(other):
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, Node):
             return False
-
-        self_attrs = tuple([getattr(self, a) for a in self.attr_names])
-        other_attrs = tuple([getattr(other, a) for a in other.attr_names])
-
-        if self_attrs != other_attrs:
+        if self.attr_names != other.attr_names:
             return False
-
-        other_children = other.children()
-
-        for i, c in enumerate(self.children()):
-            if c != other_children[i]:
-                return False
-
+        if any(getattr(self, attr) != getattr(other, attr) for attr in self.attr_names):
+            return False
+        if self.children() != other.children():
+            return False
         return True
 
-    def __ne__(self, other):
-        return not self.__eq__(other)
-
-    def __hash__(self):
-        s = hash(tuple([getattr(self, a) for a in self.attr_names]))
-        c = hash(self.children())
-        return hash((s, c))
+    def __hash__(self) -> int:
+        attr_hash = hash(tuple(getattr(self, a) for a in self.attr_names))
+        children_hash = hash(tuple(self.children()))
+        return hash((attr_hash, children_hash))
 
 
 # ------------------------------------------------------------------------------
 class Source(Node):
-    attr_names = ('name',)
+    attr_names = ("name",)
 
     def __init__(self, name, description, lineno=0):
         self.lineno = lineno
@@ -110,9 +110,11 @@ class Description(Node):
 
 
 class ModuleDef(Node):
-    attr_names = ('name',)
+    attr_names = ("name",)
 
-    def __init__(self, name, paramlist, portlist, items, default_nettype='wire', lineno=0):
+    def __init__(
+        self, name, paramlist, portlist, items, default_nettype="wire", lineno=0
+    ):
         self.lineno = lineno
         self.name = name
         self.paramlist = paramlist
@@ -160,7 +162,10 @@ class Portlist(Node):
 
 
 class Port(Node):
-    attr_names = ('name', 'type',)
+    attr_names = (
+        "name",
+        "type",
+    )
 
     def __init__(self, name, width, dimensions, type, lineno=0):
         self.lineno = lineno
@@ -212,7 +217,7 @@ class Dimensions(Node):
 
 
 class Identifier(Node):
-    attr_names = ('name',)
+    attr_names = ("name",)
 
     def __init__(self, name, scope=None, lineno=0):
         self.lineno = lineno
@@ -228,7 +233,7 @@ class Identifier(Node):
     def __repr__(self):
         if self.scope is None:
             return self.name
-        return self.scope.__repr__() + '.' + self.name
+        return self.scope.__repr__() + "." + self.name
 
 
 class Value(Node):
@@ -246,7 +251,7 @@ class Value(Node):
 
 
 class Constant(Value):
-    attr_names = ('value',)
+    attr_names = ("value",)
 
     def __init__(self, value, lineno=0):
         self.lineno = lineno
@@ -273,9 +278,11 @@ class StringConst(Constant):
 
 
 class Variable(Value):
-    attr_names = ('name', 'signed')
+    attr_names = ("name", "signed")
 
-    def __init__(self, name, width=None, signed=False, dimensions=None, value=None, lineno=0):
+    def __init__(
+        self, name, width=None, signed=False, dimensions=None, value=None, lineno=0
+    ):
         self.lineno = lineno
         self.name = name
         self.width = width
@@ -348,7 +355,7 @@ class Ioport(Node):
 
 
 class Parameter(Node):
-    attr_names = ('name', 'signed')
+    attr_names = ("name", "signed")
 
     def __init__(self, name, value, width=None, signed=False, lineno=0):
         self.lineno = lineno
@@ -507,10 +514,10 @@ class Operator(Node):
         return tuple(nodelist)
 
     def __repr__(self):
-        ret = '(' + self.__class__.__name__
+        ret = "(" + self.__class__.__name__
         for c in self.children():
-            ret += ' ' + c.__repr__()
-        ret += ')'
+            ret += " " + c.__repr__()
+        ret += ")"
         return ret
 
 
@@ -762,9 +769,9 @@ class SensList(Node):
 
 
 class Sens(Node):
-    attr_names = ('type',)
+    attr_names = ("type",)
 
-    def __init__(self, sig, type='posedge', lineno=0):
+    def __init__(self, sig, type="posedge", lineno=0):
         self.lineno = lineno
         self.sig = sig
         self.type = type  # 'posedge', 'negedge', 'level', 'all' (*)
@@ -914,7 +921,7 @@ class Case(Node):
 
 
 class Block(Node):
-    attr_names = ('scope',)
+    attr_names = ("scope",)
 
     def __init__(self, statements, scope=None, lineno=0):
         self.lineno = lineno
@@ -1002,7 +1009,7 @@ class DelayStatement(Node):
 
 
 class InstanceList(Node):
-    attr_names = ('module',)
+    attr_names = ("module",)
 
     def __init__(self, module, parameterlist, instances, lineno=0):
         self.lineno = lineno
@@ -1020,7 +1027,7 @@ class InstanceList(Node):
 
 
 class Instance(Node):
-    attr_names = ('name', 'module')
+    attr_names = ("name", "module")
 
     def __init__(self, module, name, portlist, parameterlist, array=None, lineno=0):
         self.lineno = lineno
@@ -1042,7 +1049,7 @@ class Instance(Node):
 
 
 class ParamArg(Node):
-    attr_names = ('paramname',)
+    attr_names = ("paramname",)
 
     def __init__(self, paramname, argname, lineno=0):
         self.lineno = lineno
@@ -1057,7 +1064,7 @@ class ParamArg(Node):
 
 
 class PortArg(Node):
-    attr_names = ('portname',)
+    attr_names = ("portname",)
 
     def __init__(self, portname, argname, lineno=0):
         self.lineno = lineno
@@ -1072,13 +1079,14 @@ class PortArg(Node):
 
 
 class Function(Node):
-    attr_names = ('name',)
+    attr_names = ("name",)
 
-    def __init__(self, name, retwidth, statement, lineno=0):
+    def __init__(self, name, retwidth, statement, automatic=False, lineno=0):
         self.lineno = lineno
         self.name = name
         self.retwidth = retwidth
         self.statement = statement
+        self.automatic = automatic
 
     def children(self):
         nodelist = []
@@ -1113,7 +1121,7 @@ class FunctionCall(Node):
 
 
 class Task(Node):
-    attr_names = ('name',)
+    attr_names = ("name",)
 
     def __init__(self, name, statement, lineno=0):
         self.lineno = lineno
@@ -1159,7 +1167,7 @@ class GenerateStatement(Node):
 
 
 class SystemCall(Node):
-    attr_names = ('syscall',)
+    attr_names = ("syscall",)
 
     def __init__(self, syscall, args, lineno=0):
         self.lineno = lineno
@@ -1174,18 +1182,18 @@ class SystemCall(Node):
 
     def __repr__(self):
         ret = []
-        ret.append('(')
-        ret.append('$')
+        ret.append("(")
+        ret.append("$")
         ret.append(self.syscall)
         for a in self.args:
-            ret.append(' ')
+            ret.append(" ")
             ret.append(str(a))
-        ret.append(')')
-        return ''.join(ret)
+        ret.append(")")
+        return "".join(ret)
 
 
 class IdentifierScopeLabel(Node):
-    attr_names = ('name', 'loop')
+    attr_names = ("name", "loop")
 
     def __init__(self, name, loop=None, lineno=0):
         self.lineno = lineno
@@ -1226,7 +1234,7 @@ class Pragma(Node):
 
 
 class PragmaEntry(Node):
-    attr_names = ('name', )
+    attr_names = ("name",)
 
     def __init__(self, name, value=None, lineno=0):
         self.lineno = lineno
@@ -1241,7 +1249,7 @@ class PragmaEntry(Node):
 
 
 class Disable(Node):
-    attr_names = ('dest',)
+    attr_names = ("dest",)
 
     def __init__(self, dest, lineno=0):
         self.lineno = lineno
@@ -1253,7 +1261,7 @@ class Disable(Node):
 
 
 class ParallelBlock(Node):
-    attr_names = ('scope',)
+    attr_names = ("scope",)
 
     def __init__(self, statements, scope=None, lineno=0):
         self.lineno = lineno
@@ -1282,7 +1290,7 @@ class SingleStatement(Node):
 
 
 class EmbeddedCode(Node):
-    attr_names = ('code',)
+    attr_names = ("code",)
 
     def __init__(self, code, lineno=0):
         self.code = code

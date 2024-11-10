@@ -1,3 +1,6 @@
 *.pyc
 *.out
 parsetab.py
+.DS_Store
+.AppleDouble
+.LSOverride

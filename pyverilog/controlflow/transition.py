@@ -6,11 +6,6 @@
 # Copyright (C) 2013, Shinya Takamaeda-Yamazaki
 # License: Apache 2.0
 # -------------------------------------------------------------------------------
-from __future__ import absolute_import
-from __future__ import print_function
-import sys
-import os
-
 from pyverilog.dataflow.dataflow import *
 import pyverilog.utils.util as util
 import pyverilog.utils.signaltype as signaltype
@@ -38,7 +33,7 @@ def walkCond(cond, termname, termwidth=32):
         if len(cond.nextnodes) == 2:
             return _walkCond_DFOperator_dual(cond, termname, termwidth)
     if isinstance(cond, DFTerminal):
-        comp_cond = DFOperator((cond, DFEvalValue(0)), 'GreaterThan')
+        comp_cond = DFOperator((cond, DFEvalValue(0)), "GreaterThan")
         return _walkCond_DFOperator_dual(comp_cond, termname, termwidth)
     maxvalue = util.maxValue(termwidth)
     return StateNode(transcond=cond, maxvalue=maxvalue, isany=True)
@@ -75,10 +70,10 @@ def _walkCond_DFOperator_dual(cond, termname, termwidth=32):
     if isinstance(l, DFTerminal) and l.name == termname:
         infval = inference.infer(cond.operator, r)
         return createStateNode(infval, termwidth)
-    if isinstance(r, DFTerminal) and r.name == termname:
-        new_op = re.sub('Greater', 'TMP', cond.operator)
-        new_op = re.sub('Less', 'Greater', new_op)
-        new_op = re.sub('TMP', 'Less', new_op)
+    if isinstance(r, DFTerminal) and isinstance(l, DFEvalValue) and r.name == termname:
+        new_op = re.sub("Greater", "TMP", cond.operator)
+        new_op = re.sub("Less", "Greater", new_op)
+        new_op = re.sub("TMP", "Less", new_op)
         infval = inference.infer(new_op, l)
         return createStateNode(infval, termwidth)
 
@@ -174,7 +169,9 @@ def notStateNode(node):
     if node.transcond is None:
         return a
     new_transcond = _not_transcond(node.transcond)
-    b = StateNode(range_pairs=node.range_pairs, transcond=new_transcond, maxvalue=node.maxvalue)
+    b = StateNode(
+        range_pairs=node.range_pairs, transcond=new_transcond, maxvalue=node.maxvalue
+    )
     return StateNodeList((a, b))
 
 
@@ -202,14 +199,16 @@ def andStateNode(sna, snb):
 
     transcond = None
     if isinstance(sna.transcond, DFNode) and isinstance(snb.transcond, DFNode):
-        transcond = DFOperator((sna.transcond, snb.transcond), 'Land')
+        transcond = DFOperator((sna.transcond, snb.transcond), "Land")
     elif isinstance(sna.transcond, DFNode):
         transcond = sna.transcond
     elif isinstance(snb.transcond, DFNode):
         transcond = snb.transcond
 
     maxvalue = max(sna.maxvalue, snb.maxvalue)
-    return StateNode(tuple(range_pairs), maxvalue=maxvalue, transcond=transcond, isany=isany)
+    return StateNode(
+        tuple(range_pairs), maxvalue=maxvalue, transcond=transcond, isany=isany
+    )
 
 
 def _and_range_pairs(sna, snb):
@@ -259,11 +258,11 @@ def _not_range_pairs(node):
 def _not_transcond(transcond):
     if transcond is None:
         return None
-    elif isinstance(transcond, DFOperator) and transcond.operator == 'Ulnot':
+    elif isinstance(transcond, DFOperator) and transcond.operator == "Ulnot":
         return transcond.nextnodes[0]
-    elif isinstance(transcond, DFOperator) and transcond.operator == 'Unot':
+    elif isinstance(transcond, DFOperator) and transcond.operator == "Unot":
         return transcond.nextnodes[0]
-    return DFOperator((transcond,), 'Ulnot')
+    return DFOperator((transcond,), "Ulnot")
 
 
 def createStateNode(infval, width):
@@ -289,7 +288,9 @@ def isStateNodeList(node):
 
 
 class StateNode(object):
-    def __init__(self, range_pairs=(), minvalue=0, maxvalue=0, transcond=None, isany=False):
+    def __init__(
+        self, range_pairs=(), minvalue=0, maxvalue=0, transcond=None, isany=False
+    ):
         self.range_pairs = range_pairs
         self.minvalue = minvalue
         self.maxvalue = maxvalue
@@ -297,14 +298,14 @@ class StateNode(object):
         self.isany = isany
 
     def __repr__(self):
-        ret = 'state:'
+        ret = "state:"
         for r in self.range_pairs:
-            ret += str(r) + ' '
+            ret += str(r) + " "
         if self.isany:
-            ret += 'any '
+            ret += "any "
         ret = ret[:-1]
-        ret += ', cond:'
-        if isinstance(self.transcond, DFNode):
+        ret += ", cond:"
+        if isinstance(self.transcond, DFNode) and self.transcond is not None:
             ret += self.transcond.tocode()
         else:
             ret += str(self.transcond)
@@ -316,7 +317,7 @@ class StateNodeList(object):
         self.nodelist = nodelist
 
     def __repr__(self):
-        ret = '('
+        ret = "("
         for n in self.nodelist:
-            ret += n.__repr__() + ' '
-        return ret[:-1] + ')'
+            ret += n.__repr__() + " "
+        return ret[:-1] + ")"

@@ -6,12 +6,6 @@
 # Copyright (C) 2013, Shinya Takamaeda-Yamazaki
 # License: Apache 2.0
 # -------------------------------------------------------------------------------
-from __future__ import absolute_import
-from __future__ import print_function
-import sys
-import os
-import copy
-
 from pyverilog.utils.scope import ScopeLabel, ScopeChain
 
 
@@ -27,9 +21,9 @@ def toTermname(name):
 
 def toTermname_str(name):
     scopechain_list = []
-    for n in name.split('.'):
+    for n in name.split("."):
         # fix me: to support "module.scope.signal[ptr]", lexical analyzer is required.
-        scopechain_list.append(ScopeLabel(n, 'any'))
+        scopechain_list.append(ScopeLabel(n, "any"))
     return ScopeChain(scopechain_list)
 
 
@@ -38,7 +32,7 @@ def toTermname_list(name):
     for n in name:
         if not isinstance(n, str):
             raise TypeError()
-        scopechain_list.append(ScopeLabel(n, 'any'))
+        scopechain_list.append(ScopeLabel(n, "any"))
     return ScopeChain(scopechain_list)
 
 
@@ -47,7 +41,7 @@ def getScope(termname):
 
 
 def toFlatname(termname):
-    #flatname = ''
+    # flatname = ''
     # for t in termname:
     #    flatname += str(t.scopename) + '__'
     # return flatname[:-2]
@@ -56,9 +50,9 @@ def toFlatname(termname):
 
 def splitScopeName(termname):
     scope = termname[:-1]
-    scope_str = ''
+    scope_str = ""
     for s in scope:
-        scope_str += s.scopename + '.'
+        scope_str += s.scopename + "."
     scope_str = scope_str[:-1]
     signame_str = termname[-1]
     return scope_str, signame_str
@@ -84,4 +78,4 @@ def dictlistmerge(a, b):
 
 
 def maxValue(width):
-    return 2 ** width - 1
+    return 2**width - 1

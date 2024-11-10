@@ -6,25 +6,22 @@
 # Copyright (C) 2013, Shinya Takamaeda-Yamazaki
 # License: Apache 2.0
 # -------------------------------------------------------------------------------
-from __future__ import absolute_import
-from __future__ import print_function
-import sys
-import os
+
 
 from pyverilog.dataflow.dataflow import *
 import pyverilog.utils.verror as verror
 
-this = sys.modules[__name__]
 
-
-def infer(op, node):
-    # if not isinstance(node, DFEvalValue): return None
+def infer(op: str, node: DFEvalValue):
+    """根据操作符和节点值推断结果"""
     if not isinstance(node, DFEvalValue):
-        raise verror.FormatError('Can not infer the value from non DFEvalValue object')
-    val = node.value
-    funcname = 'op_' + op
-    opfunc = getattr(this, funcname, op_None)
-    return opfunc(val)
+        raise verror.FormatError(
+            f"Cannot infer value from non-DFEvalValue object, got {type(node).__name__}"
+        )
+
+    funcname = f"op_{op}"
+    opfunc = globals().get(funcname, op_None)
+    return opfunc(node.value)
 
 
 def op_LessThan(val):
@@ -79,7 +76,7 @@ def op_NotEql(val):
 
 
 def op_None(val):
-    raise verror.FormatError('Unsupported Comparator')
+    raise verror.FormatError("Unsupported Comparator")
 
 
 class InferredValue(object):
@@ -89,13 +86,13 @@ class InferredValue(object):
         self.inv = inv
 
     def __repr__(self):
-        ret = ''
+        ret = ""
         if self.inv:
-            ret += '(INV '
-        ret += 'min:' + str(self.minval)
-        ret += ' max:' + str(self.maxval)
+            ret += "(INV "
+        ret += "min:" + str(self.minval)
+        ret += " max:" + str(self.maxval)
         if self.inv:
-            ret += ')'
+            ret += ")"
         return ret
 
     def invert(self):

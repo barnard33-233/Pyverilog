@@ -6,11 +6,6 @@
 # Copyright (C) 2013, Shinya Takamaeda-Yamazaki
 # License: Apache 2.0
 # -------------------------------------------------------------------------------
-from __future__ import absolute_import
-from __future__ import print_function
-import sys
-import os
-
 from pyverilog.dataflow.dataflow import *
 import pyverilog.controlflow.splitter as splitter
 import pyverilog.controlflow.transition as transition
@@ -18,10 +13,18 @@ from pyverilog.controlflow.controlflow_analyzer import VerilogControlflowAnalyze
 
 
 class VerilogActiveConditionAnalyzer(VerilogControlflowAnalyzer):
-    def __init__(self, topmodule, terms, binddict,
-                 resolved_terms, resolved_binddict, constlist):
-        VerilogControlflowAnalyzer.__init__(self, topmodule, terms, binddict,
-                                            resolved_terms, resolved_binddict, constlist)
+    def __init__(
+        self, topmodule, terms, binddict, resolved_terms, resolved_binddict, constlist
+    ):
+        VerilogControlflowAnalyzer.__init__(
+            self,
+            topmodule,
+            terms,
+            binddict,
+            resolved_terms,
+            resolved_binddict,
+            constlist,
+        )
         self.fsm_loops, self.fsms = self.getLoops()
 
     def getActiveConditions(self, termname, condition=splitter.active_constant):
@@ -33,8 +36,8 @@ class VerilogActiveConditionAnalyzer(VerilogControlflowAnalyzer):
         funcdict = splitter.remove_reset_condition(funcdict)
 
         if len(funcdict) == 1 and len(list(funcdict.keys())[0]) == 0:
-            func = funcdict.values()[0]
-            return {termname: (('any', None), )}
+            func = list(funcdict.values())[0]
+            return {termname: (("any", None),)}
 
         active_conditions = {}
         active_conditions_size = 0
