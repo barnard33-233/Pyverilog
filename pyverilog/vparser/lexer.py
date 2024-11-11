@@ -14,23 +14,20 @@
    limitations under the License.
 """
 
-from __future__ import absolute_import
-from __future__ import print_function
 import sys
-import os
 import re
 
-from ply.lex import *
+from ply.lex import lex, TOKEN
 
 
 class VerilogLexer(object):
-    """ Verilog HDL Lexical Analayzer """
+    """Verilog HDL Lexical Analayzer"""
 
     def __init__(self, error_func):
-        self.filename = ''
+        self.filename = ""
         self.error_func = error_func
         self.directives = []
-        self.default_nettype = 'wire'
+        self.default_nettype = "wire"
 
     def build(self, **kwargs):
         self.lexer = lex(object=self, **kwargs)
@@ -51,51 +48,139 @@ class VerilogLexer(object):
         return self.lexer.token()
 
     keywords = (
-        'MODULE', 'ENDMODULE', 'BEGIN', 'END', 'GENERATE', 'ENDGENERATE', 'GENVAR',
-        'FUNCTION', 'ENDFUNCTION', 'TASK', 'ENDTASK',
-        'INPUT', 'INOUT', 'OUTPUT', 'TRI', 'REG', 'LOGIC', 'WIRE', 'INTEGER', 'REAL', 'SIGNED',
-        'PARAMETER', 'LOCALPARAM', 'SUPPLY0', 'SUPPLY1',
-        'ASSIGN', 'ALWAYS', 'ALWAYS_FF', 'ALWAYS_COMB', 'ALWAYS_LATCH', 'SENS_OR', 'POSEDGE', 'NEGEDGE', 'INITIAL',
-        'IF', 'ELSE', 'FOR', 'WHILE', 'CASE', 'CASEX', 'CASEZ', 'UNIQUE', 'ENDCASE', 'DEFAULT',
-        'WAIT', 'FOREVER', 'DISABLE', 'FORK', 'JOIN',
+        "MODULE",
+        "ENDMODULE",
+        "BEGIN",
+        "END",
+        "GENERATE",
+        "ENDGENERATE",
+        "GENVAR",
+        "FUNCTION",
+        "ENDFUNCTION",
+        "AUTOMATIC",
+        "TASK",
+        "ENDTASK",
+        "INPUT",
+        "INOUT",
+        "OUTPUT",
+        "TRI",
+        "REG",
+        "LOGIC",
+        "WIRE",
+        "INTEGER",
+        "REAL",
+        "SIGNED",
+        "PARAMETER",
+        "LOCALPARAM",
+        "SUPPLY0",
+        "SUPPLY1",
+        "ASSIGN",
+        "ALWAYS",
+        "ALWAYS_FF",
+        "ALWAYS_COMB",
+        "ALWAYS_LATCH",
+        "SENS_OR",
+        "POSEDGE",
+        "NEGEDGE",
+        "INITIAL",
+        "IF",
+        "ELSE",
+        "FOR",
+        "WHILE",
+        "CASE",
+        "CASEX",
+        "CASEZ",
+        "UNIQUE",
+        "ENDCASE",
+        "DEFAULT",
+        "WAIT",
+        "FOREVER",
+        "DISABLE",
+        "FORK",
+        "JOIN",
     )
 
     reserved = {}
     for keyword in keywords:
-        if keyword == 'SENS_OR':
-            reserved['or'] = keyword
+        if keyword == "SENS_OR":
+            reserved["or"] = keyword
         else:
             reserved[keyword.lower()] = keyword
 
     operators = (
-        'PLUS', 'MINUS', 'POWER', 'TIMES', 'DIVIDE', 'MOD',
-        'NOT', 'OR', 'NOR', 'AND', 'NAND', 'XOR', 'XNOR',
-        'LOR', 'LAND', 'LNOT',
-        'LSHIFTA', 'RSHIFTA', 'LSHIFT', 'RSHIFT',
-        'LT', 'GT', 'LE', 'GE', 'EQ', 'NE', 'EQL', 'NEL',
-        'COND',  # ?
-        'EQUALS',
+        "PLUS",
+        "MINUS",
+        "POWER",
+        "TIMES",
+        "DIVIDE",
+        "MOD",
+        "NOT",
+        "OR",
+        "NOR",
+        "AND",
+        "NAND",
+        "XOR",
+        "XNOR",
+        "LOR",
+        "LAND",
+        "LNOT",
+        "LSHIFTA",
+        "RSHIFTA",
+        "LSHIFT",
+        "RSHIFT",
+        "LT",
+        "GT",
+        "LE",
+        "GE",
+        "EQ",
+        "NE",
+        "EQL",
+        "NEL",
+        "COND",  # ?
+        "EQUALS",
     )
 
-    tokens = keywords + operators + (
-        'ID',
-        'AT', 'COMMA', 'COLON', 'SEMICOLON', 'DOT',
-        'PLUSCOLON', 'MINUSCOLON',
-        'FLOATNUMBER', 'STRING_LITERAL',
-        'INTNUMBER_DEC', 'SIGNED_INTNUMBER_DEC',
-        'INTNUMBER_HEX', 'SIGNED_INTNUMBER_HEX',
-        'INTNUMBER_OCT', 'SIGNED_INTNUMBER_OCT',
-        'INTNUMBER_BIN', 'SIGNED_INTNUMBER_BIN',
-        'LPAREN', 'RPAREN', 'LBRACKET', 'RBRACKET', 'LBRACE', 'RBRACE',
-        'DELAY', 'DOLLER',
+    tokens = (
+        keywords
+        + operators
+        + (
+            "ID",
+            "AT",
+            "COMMA",
+            "COLON",
+            "SEMICOLON",
+            "DOT",
+            "PLUSCOLON",
+            "MINUSCOLON",
+            "FLOATNUMBER",
+            "STRING_LITERAL",
+            "INTNUMBER_DEC",
+            "SIGNED_INTNUMBER_DEC",
+            "INTNUMBER_HEX",
+            "SIGNED_INTNUMBER_HEX",
+            "INTNUMBER_OCT",
+            "SIGNED_INTNUMBER_OCT",
+            "INTNUMBER_BIN",
+            "SIGNED_INTNUMBER_BIN",
+            "LPAREN",
+            "RPAREN",
+            "LBRACKET",
+            "RBRACKET",
+            "LBRACE",
+            "RBRACE",
+            "DELAY",
+            "DOLLER",
+        )
     )
 
     skipped = (
-        'COMMENTOUT', 'LINECOMMENT', 'DIRECTIVE',
+        "COMMENTOUT",
+        "LINECOMMENT",
+        "DIRECTIVE",
     )
 
     # Ignore
-    t_ignore = ' \t'
+    t_ignore = " \t"
 
     # Directive
     directive = r"""\`.*?\n"""
@@ -104,7 +189,7 @@ class VerilogLexer(object):
     def t_DIRECTIVE(self, t):
         self.directives.append((self.lexer.lineno, t.value))
         t.lexer.lineno += t.value.count("\n")
-        m = re.match("^`default_nettype\s+(.+)\n", t.value)
+        m = re.match(r"^`default_nettype\s+(.+)\n", t.value)
         if m:
             self.default_nettype = m.group(1)
         pass
@@ -124,82 +209,91 @@ class VerilogLexer(object):
         pass
 
     # Operator
-    t_LOR = r'\|\|'
-    t_LAND = r'\&\&'
+    t_LOR = r"\|\|"
+    t_LAND = r"\&\&"
 
-    t_NOR = r'~\|'
-    t_NAND = r'~\&'
-    t_XNOR = r'~\^'
-    t_OR = r'\|'
-    t_AND = r'\&'
-    t_XOR = r'\^'
-    t_LNOT = r'!'
-    t_NOT = r'~'
+    t_NOR = r"~\|"
+    t_NAND = r"~\&"
+    t_XNOR = r"~\^"
+    t_OR = r"\|"
+    t_AND = r"\&"
+    t_XOR = r"\^"
+    t_LNOT = r"!"
+    t_NOT = r"~"
 
-    t_LSHIFTA = r'<<<'
-    t_RSHIFTA = r'>>>'
-    t_LSHIFT = r'<<'
-    t_RSHIFT = r'>>'
+    t_LSHIFTA = r"<<<"
+    t_RSHIFTA = r">>>"
+    t_LSHIFT = r"<<"
+    t_RSHIFT = r">>"
 
-    t_EQL = r'==='
-    t_NEL = r'!=='
-    t_EQ = r'=='
-    t_NE = r'!='
+    t_EQL = r"==="
+    t_NEL = r"!=="
+    t_EQ = r"=="
+    t_NE = r"!="
 
-    t_LE = r'<='
-    t_GE = r'>='
-    t_LT = r'<'
-    t_GT = r'>'
+    t_LE = r"<="
+    t_GE = r">="
+    t_LT = r"<"
+    t_GT = r">"
 
-    t_POWER = r'\*\*'
-    t_PLUS = r'\+'
-    t_MINUS = r'-'
-    t_TIMES = r'\*'
-    t_DIVIDE = r'/'
-    t_MOD = r'%'
+    t_POWER = r"\*\*"
+    t_PLUS = r"\+"
+    t_MINUS = r"-"
+    t_TIMES = r"\*"
+    t_DIVIDE = r"/"
+    t_MOD = r"%"
 
-    t_COND = r'\?'
-    t_EQUALS = r'='
+    t_COND = r"\?"
+    t_EQUALS = r"="
 
-    t_PLUSCOLON = r'\+:'
-    t_MINUSCOLON = r'-:'
+    t_PLUSCOLON = r"\+:"
+    t_MINUSCOLON = r"-:"
 
-    t_AT = r'@'
-    t_COMMA = r','
-    t_SEMICOLON = r';'
-    t_COLON = r':'
-    t_DOT = r'\.'
+    t_AT = r"@"
+    t_COMMA = r","
+    t_SEMICOLON = r";"
+    t_COLON = r":"
+    t_DOT = r"\."
 
-    t_LPAREN = r'\('
-    t_RPAREN = r'\)'
-    t_LBRACKET = r'\['
-    t_RBRACKET = r'\]'
-    t_LBRACE = r'\{'
-    t_RBRACE = r'\}'
+    t_LPAREN = r"\("
+    t_RPAREN = r"\)"
+    t_LBRACKET = r"\["
+    t_RBRACKET = r"\]"
+    t_LBRACE = r"\{"
+    t_RBRACE = r"\}"
 
-    t_DELAY = r'\#'
-    t_DOLLER = r'\$'
+    t_DELAY = r"\#"
+    t_DOLLER = r"\$"
 
-    bin_number = '[0-9]*\'[bB][0-1xXzZ?][0-1xXzZ?_]*'
-    signed_bin_number = '[0-9]*\'[sS][bB][0-1xZzZ?][0-1xXzZ?_]*'
-    octal_number = '[0-9]*\'[oO][0-7xXzZ?][0-7xXzZ?_]*'
-    signed_octal_number = '[0-9]*\'[sS][oO][0-7xXzZ?][0-7xXzZ?_]*'
-    hex_number = '[0-9]*\'[hH][0-9a-fA-FxXzZ?][0-9a-fA-FxXzZ?_]*'
-    signed_hex_number = '[0-9]*\'[sS][hH][0-9a-fA-FxXzZ?][0-9a-fA-FxXzZ?_]*'
+    bin_number = "[0-9]*'[bB][0-1xXzZ?][0-1xXzZ?_]*"
+    signed_bin_number = "[0-9]*'[sS][bB][0-1xZzZ?][0-1xXzZ?_]*"
+    octal_number = "[0-9]*'[oO][0-7xXzZ?][0-7xXzZ?_]*"
+    signed_octal_number = "[0-9]*'[sS][oO][0-7xXzZ?][0-7xXzZ?_]*"
+    hex_number = "[0-9]*'[hH][0-9a-fA-FxXzZ?][0-9a-fA-FxXzZ?_]*"
+    signed_hex_number = "[0-9]*'[sS][hH][0-9a-fA-FxXzZ?][0-9a-fA-FxXzZ?_]*"
 
-    decimal_number = '([0-9]*\'[dD][0-9xXzZ?][0-9xXzZ?_]*)|([0-9][0-9_]*)'
-    signed_decimal_number = '[0-9]*\'[sS][dD][0-9xXzZ?][0-9xXzZ?_]*'
+    decimal_number = "([0-9]*'[dD][0-9xXzZ?][0-9xXzZ?_]*)|([0-9][0-9_]*)"
+    signed_decimal_number = "[0-9]*'[sS][dD][0-9xXzZ?][0-9xXzZ?_]*"
 
     exponent_part = r"""([eE][-+]?[0-9]+)"""
     fractional_constant = r"""([0-9]*\.[0-9]+)|([0-9]+\.)"""
-    float_number = '((((' + fractional_constant + ')' + \
-        exponent_part + '?)|([0-9]+' + exponent_part + ')))'
+    float_number = (
+        "(((("
+        + fractional_constant
+        + ")"
+        + exponent_part
+        + "?)|([0-9]+"
+        + exponent_part
+        + ")))"
+    )
 
     simple_escape = r"""([a-zA-Z\\?'"])"""
     octal_escape = r"""([0-7]{1,3})"""
     hex_escape = r"""(x[0-9a-fA-F]+)"""
-    escape_sequence = r"""(\\(""" + simple_escape + '|' + octal_escape + '|' + hex_escape + '))'
-    string_char = r"""([^"\\\n]|""" + escape_sequence + ')'
+    escape_sequence = (
+        r"""(\\(""" + simple_escape + "|" + octal_escape + "|" + hex_escape + "))"
+    )
+    string_char = r"""([^"\\\n]|""" + escape_sequence + ")"
     string_literal = '"' + string_char + '*"'
 
     identifier = r"""(([a-zA-Z_])([a-zA-Z_0-9$])*)|((\\\S)(\S)*)"""
@@ -246,16 +340,16 @@ class VerilogLexer(object):
 
     @TOKEN(identifier)
     def t_ID(self, t):
-        t.type = self.reserved.get(t.value, 'ID')
+        t.type = self.reserved.get(t.value, "ID")
         return t
 
     def t_NEWLINE(self, t):
-        r'\n+'
+        r"\n+"
         t.lexer.lineno += t.value.count("\n")
         pass
 
     def t_error(self, t):
-        msg = 'Illegal character %s' % repr(t.value[0])
+        msg = "Illegal character %s" % repr(t.value[0])
         self._error(msg, t)
 
     def _error(self, msg, token):
@@ -266,7 +360,7 @@ class VerilogLexer(object):
     def _find_tok_column(self, token):
         i = token.lexpos
         while i > 0:
-            if self.lexer.lexdata[i] == '\n':
+            if self.lexer.lexdata[i] == "\n":
                 break
             i -= 1
         return (token.lexpos - i) + 1
@@ -277,7 +371,7 @@ class VerilogLexer(object):
 
 def dump_tokens(text):
     def my_error_func(msg, a, b):
-        sys.write(msg + "\n")
+        sys.stderr.write(msg + "\n")
         sys.exit()
 
     lexer = VerilogLexer(error_func=my_error_func)
@@ -291,7 +385,9 @@ def dump_tokens(text):
         tok = lexer.token()
         if not tok:
             break  # No more input
-        ret.append("%s %s %d %s %d\n" %
-                   (tok.value, tok.type, tok.lineno, lexer.filename, tok.lexpos))
+        ret.append(
+            "%s %s %d %s %d\n"
+            % (tok.value, tok.type, tok.lineno, lexer.filename, tok.lexpos)
+        )
 
-    return ''.join(ret)
+    return "".join(ret)

@@ -6,20 +6,26 @@
 # Copyright (C) 2013, Shinya Takamaeda-Yamazaki
 # License: Apache 2.0
 # -------------------------------------------------------------------------------
-from __future__ import absolute_import
-from __future__ import print_function
-import sys
-import os
-import math
 
+import math
 import pyverilog.utils.verror as verror
 import pyverilog.utils.signaltype as signaltype
 from pyverilog.dataflow.dataflow import *
+from pyverilog.utils.verror import FormatError
 
 
 class VerilogOptimizer(object):
     default_width = 32
-    compare_ops = ('LessThan', 'GreaterThan', 'LassEq', 'GreaterEq', 'Eq', 'NotEq', 'Eql', 'NotEql')
+    compare_ops = (
+        "LessThan",
+        "GreaterThan",
+        "LassEq",
+        "GreaterEq",
+        "Eq",
+        "NotEq",
+        "Eql",
+        "NotEql",
+    )
 
     def __init__(self, terms, constlist=None, default_width=32, level=2):
         self.terms = terms
@@ -36,7 +42,7 @@ class VerilogOptimizer(object):
 
     def getConstant(self, name):
         if not name in self.constlist:
-            raise verror.DefinitionError('constant value not found: %s' % str(name))
+            raise verror.DefinitionError("constant value not found: %s" % str(name))
         return self.constlist[name]
 
     def hasConstant(self, name):
@@ -81,24 +87,24 @@ class VerilogOptimizer(object):
         if isinstance(tree, DFHighImpedance):
             return tree
         if isinstance(tree, DFDelay):
-            raise FormatError('Can not evaluate and optimize a DFDelay')
+            raise FormatError("Can not evaluate and optimize a DFDelay")
             # return tree
 
         if isinstance(tree, DFIntConst):
-            if 'x' in tree.value or 'z' in tree.value:
+            if "x" in tree.value or "z" in tree.value:
                 return DFUndefined(tree.width())
-            if 'X' in tree.value or 'Z' in tree.value:
+            if "X" in tree.value or "Z" in tree.value:
                 return DFUndefined(tree.width())
             return DFEvalValue(tree.eval(), tree.width())
         if isinstance(tree, DFFloatConst):
             return DFEvalValue(tree.eval(), self.default_width, isfloat=True)
         if isinstance(tree, DFStringConst):
-            return DFEvalValue(tree.eval(), None, isstring=True)
+            return DFEvalValue(tree.eval(), 0, isstring=True)
         if isinstance(tree, DFConstant):
-            if 'x' in tree.value or 'z' in tree.value:
-                return DFUndefined()
-            if 'X' in tree.value or 'Z' in tree.value:
-                return DFUndefined()
+            if "x" in tree.value or "z" in tree.value:
+                return DFUndefined(0)
+            if "X" in tree.value or "Z" in tree.value:
+                return DFUndefined(0)
             return DFEvalValue(tree.eval(), self.default_width)
 
         if isinstance(tree, DFOperator):
@@ -119,7 +125,9 @@ class VerilogOptimizer(object):
             if msb is not None and lsb is not None:
                 msb_val = self.optimizeConstant(msb)
                 lsb_val = self.optimizeConstant(lsb)
-                if isinstance(msb_val, DFEvalValue) and isinstance(lsb_val, DFEvalValue):
+                if isinstance(msb_val, DFEvalValue) and isinstance(
+                    lsb_val, DFEvalValue
+                ):
                     constwidth = msb_val.value - lsb_val.value + 1
             return DFEvalValue(const.value, constwidth)
 
@@ -135,7 +143,11 @@ class VerilogOptimizer(object):
             var = self.optimizeConstant(tree.var)
             msb = self.optimizeConstant(tree.msb)
             lsb = self.optimizeConstant(tree.lsb)
-            if isinstance(var, DFEvalValue) and isinstance(msb, DFEvalValue) and isinstance(msb, DFEvalValue):
+            if (
+                isinstance(var, DFEvalValue)
+                and isinstance(msb, DFEvalValue)
+                and isinstance(msb, DFEvalValue)
+            ):
                 evalcc = self.evalPartselect(var, msb, lsb)
                 return evalcc
             return DFPartselect(var, msb, lsb)
@@ -154,10 +166,13 @@ class VerilogOptimizer(object):
             return DFPointer(var, ptr)
 
         if isinstance(tree, DFSyscall):
-            return DFSyscall(tree.syscall, tuple([self.optimizeConstant(n) for n in tree.nextnodes]))
+            return DFSyscall(
+                tree.syscall, tuple([self.optimizeConstant(n) for n in tree.nextnodes])
+            )
 
-        raise verror.DefinitionError('Can not optimize the tree: %s %s' %
-                                     (str(type(tree)), str(tree)))
+        raise verror.DefinitionError(
+            "Can not optimize the tree: %s %s" % (str(type(tree)), str(tree))
+        )
 
     def evalNextnodes(self, nextnodes):
         ret = []
@@ -182,99 +197,99 @@ class VerilogOptimizer(object):
         return DFEvalValue(rslt, width)
 
     def _evalOperator(self, operator, valuelist, width=default_width):
-        if operator == 'Uminus':
+        if operator == "Uminus":
             return -1 * valuelist[0]
-        if operator == 'Ulnot':
+        if operator == "Ulnot":
             if valuelist[0] == 0:
                 return 1
             return 0
-        if operator == 'Unot':
+        if operator == "Unot":
             retval = 0
             for i in range(width):
                 if valuelist[0] & (1 << i) == 0:
-                    retval |= (1 << i)
+                    retval |= 1 << i
             return retval
-        if operator == 'Uand':
+        if operator == "Uand":
             for i in range(width):
                 if valuelist[0] & (1 << i) == 0:
                     return 0
             return 1
-        if operator == 'Unand':
+        if operator == "Unand":
             for i in range(width):
                 if valuelist[0] & (1 << i) == 0:
                     return 1
             return 0
-        if operator == 'Uor':
+        if operator == "Uor":
             for i in range(width):
                 if valuelist[0] & (1 << i) != 0:
                     return 1
             return 0
-        if operator == 'Unor':
+        if operator == "Unor":
             for i in range(width):
                 if valuelist[0] & (1 << i) != 0:
                     return 0
             return 1
-        if operator == 'Uxor':
+        if operator == "Uxor":
             rslt = 0
             for i in range(width):
                 if valuelist[0] & (1 << i) != 0:
                     rslt = 1 if rslt == 0 else 0
             return rslt
-        if operator == 'Uxnor':
+        if operator == "Uxnor":
             rslt = 1
             for i in range(width):
                 if valuelist[0] & (1 << i) != 0:
                     rslt = 1 if rslt == 0 else 0
             return rslt
-        if operator == 'Power':
+        if operator == "Power":
             return valuelist[0] ** valuelist[1]
-        if operator == 'Times':
+        if operator == "Times":
             return valuelist[0] * valuelist[1]
-        if operator == 'Divide':
+        if operator == "Divide":
             value = valuelist[0] / valuelist[1]
             if isinstance(valuelist[0], int) and isinstance(valuelist[1], int):
                 return int(value)
             return value
-        if operator == 'Mod':
+        if operator == "Mod":
             return valuelist[0] % valuelist[1]
-        if operator == 'Plus':
+        if operator == "Plus":
             return valuelist[0] + valuelist[1]
-        if operator == 'Minus':
+        if operator == "Minus":
             return valuelist[0] - valuelist[1]
-        if operator == 'Sll':
+        if operator == "Sll":
             return valuelist[0] << valuelist[1]
-        if operator == 'Srl':
+        if operator == "Srl":
             return valuelist[0] >> valuelist[1]
-        if operator == 'Sra':
+        if operator == "Sra":
             return valuelist[0] >> valuelist[1]
 
-        if operator == 'LessThan':
+        if operator == "LessThan":
             return 1 if valuelist[0] < valuelist[1] else 0
-        if operator == 'GreaterThan':
+        if operator == "GreaterThan":
             return 1 if valuelist[0] > valuelist[1] else 0
-        if operator == 'LessEq':
+        if operator == "LessEq":
             return 1 if valuelist[0] <= valuelist[1] else 0
-        if operator == 'GreaterEq':
+        if operator == "GreaterEq":
             return 1 if valuelist[0] >= valuelist[1] else 0
-        if operator == 'Eq':
+        if operator == "Eq":
             return 1 if valuelist[0] == valuelist[1] else 0
-        if operator == 'NotEq':
+        if operator == "NotEq":
             return 1 if valuelist[0] != valuelist[1] else 0
-        if operator == 'Eql':
+        if operator == "Eql":
             return 1 if valuelist[0] == valuelist[1] else 0
-        if operator == 'NotEql':
+        if operator == "NotEql":
             return 1 if valuelist[0] != valuelist[1] else 0
-        if operator == 'And':
+        if operator == "And":
             return valuelist[0] & valuelist[1]
-        if operator == 'Xor':
+        if operator == "Xor":
             return valuelist[0] ^ valuelist[1]
-        if operator == 'Xnor':
+        if operator == "Xnor":
             return ~(valuelist[0] ^ valuelist[1])
-        if operator == 'Or':
+        if operator == "Or":
             return valuelist[0] | valuelist[1]
-        if operator == 'Land':
+        if operator == "Land":
             return 1 if valuelist[0] and valuelist[1] else 0
-        if operator == 'Lor':
+        if operator == "Lor":
             return 1 if valuelist[0] or valuelist[1] else 0
         return None
 
@@ -317,7 +332,7 @@ class VerilogOptimizer(object):
         if isinstance(node, DFOperator):
             if node.operator in self.compare_ops:
                 return 1
-            if node.operator == 'Land' or node.operator == 'Lor':
+            if node.operator == "Land" or node.operator == "Lor":
                 return 1
             maxwidth = 0
             for n in node.nextnodes:
@@ -344,7 +359,7 @@ class VerilogOptimizer(object):
         if isinstance(tree, DFSyscall):
             return self.default_width
 
-        raise FormatError('Illegal Pointer in getWidth()')
+        raise FormatError("Illegal Pointer in getWidth()")
 
     def evalConcat(self, nextnodes):
         concatval = 0
@@ -357,7 +372,7 @@ class VerilogOptimizer(object):
 
     def isCondTrue(self, cond):
         if not isinstance(cond, DFEvalValue):
-            raise FormatError('Can not evaluate the branch condition.')
+            raise FormatError("Can not evaluate the branch condition.")
         if cond.value == 0:
             return False
         return True
@@ -365,8 +380,8 @@ class VerilogOptimizer(object):
     def evalPartselect(self, var, msb, lsb):
         width = msb.value - lsb.value + 1
         partval = var.value >> lsb.value
-        if partval >= 2 ** width:
-            partval = partval % (2 ** width)
+        if partval >= 2**width:
+            partval = partval % (2**width)
         return DFEvalValue(partval, width)
 
     def evalPointer(self, var, ptr):
@@ -415,9 +430,18 @@ class VerilogOptimizer(object):
             msb = self.optimizeHierarchy(tree.msb)
             lsb = self.optimizeHierarchy(tree.lsb)
             var = self.optimizeHierarchy(tree.var)
-            if isinstance(var, DFConcat) and isinstance(msb, DFEvalValue) and isinstance(lsb, DFEvalValue):
+            if (
+                isinstance(var, DFConcat)
+                and isinstance(msb, DFEvalValue)
+                and isinstance(lsb, DFEvalValue)
+            ):
                 return self.takePart(var.nextnodes, msb, lsb)
-            if isinstance(msb, DFEvalValue) and isinstance(lsb, DFEvalValue) and lsb.value == 0 and self.getWidth(var) == (msb.value + 1):
+            if (
+                isinstance(msb, DFEvalValue)
+                and isinstance(lsb, DFEvalValue)
+                and lsb.value == 0
+                and self.getWidth(var) == (msb.value + 1)
+            ):
                 return var
             return DFPartselect(var, msb, lsb)
         if isinstance(tree, DFPointer):
@@ -435,9 +459,11 @@ class VerilogOptimizer(object):
                 nextnodes.append(self.optimizeHierarchy(n))
             return self.mergeConcat(DFConcat(tuple(nextnodes)))
         if isinstance(tree, DFSyscall):
-            return DFSyscall(tree.syscall, tuple([self.optimizeHierarchy(n) for n in tree.nextnodes]))
+            return DFSyscall(
+                tree.syscall, tuple([self.optimizeHierarchy(n) for n in tree.nextnodes])
+            )
 
-        raise FormatError('Can not merge due to unrecognized type of tree')
+        raise FormatError("Can not merge due to unrecognized type of tree")
 
     def takePoint(self, nextnodes, ptr):
         return self.takePart(nextnodes, ptr, ptr)
@@ -482,15 +508,35 @@ class VerilogOptimizer(object):
             if lsboffset == 0:
                 return DFConcat((DFUndefined(cutwidth - widsum),) + tuple(usednodes))
             if len(usednodes) == 1:
-                return DFConcat((DFUndefined(cutwidth - widsum + lsboffset), DFPartselect(usednodes[0], DFEvalValue(widsum - 1), DFEvalValue(lsb + lsboffset))))
-            return DFConcat((DFUndefined(cutwidth - widsum + lsboffset), DFPartselect(DFConcat(tuple(usednodes)), DFEvalValue(widsum - 1), DFEvalValue(lsb + lsboffset))))
+                return DFConcat(
+                    (
+                        DFUndefined(cutwidth - widsum + lsboffset),
+                        DFPartselect(
+                            usednodes[0],
+                            DFEvalValue(widsum - 1),
+                            DFEvalValue(lsb + lsboffset),
+                        ),
+                    )
+                )
+            return DFConcat(
+                (
+                    DFUndefined(cutwidth - widsum + lsboffset),
+                    DFPartselect(
+                        DFConcat(tuple(usednodes)),
+                        DFEvalValue(widsum - 1),
+                        DFEvalValue(lsb + lsboffset),
+                    ),
+                )
+            )
         if lsboffset == 0 and msboffset == 0:
             if len(usednodes) == 1:
                 return usednodes[0]
             return DFConcat(tuple(usednodes))
 
         if len(usednodes) == 1:
-            return DFPartselect(usednodes[0], DFEvalValue(msb - msboffset), DFEvalValue(lsb + lsboffset))
+            return DFPartselect(
+                usednodes[0], DFEvalValue(msb - msboffset), DFEvalValue(lsb + lsboffset)
+            )
 
         ret_usednodes = []
         usednodes_cnt = 0
@@ -498,18 +544,28 @@ class VerilogOptimizer(object):
             if usednodes_cnt == 0 and lsboffset > 0:
                 lsbval = lsboffset
                 msbval = widlist[usednodes_cnt] - 1
-                ret_usednodes.append(self.optimizeConstant(
-                    DFPartselect(node, DFEvalValue(msbval), DFEvalValue(lsbval))))
+                ret_usednodes.append(
+                    self.optimizeConstant(
+                        DFPartselect(node, DFEvalValue(msbval), DFEvalValue(lsbval))
+                    )
+                )
             elif usednodes_cnt == len(usednodes) - 1 and msboffset > 0:
                 lsbval = 0
                 msbval = widlist[usednodes_cnt] - msboffset - 1
-                ret_usednodes.append(self.optimizeConstant(
-                    DFPartselect(node, DFEvalValue(msbval), DFEvalValue(lsbval))))
+                ret_usednodes.append(
+                    self.optimizeConstant(
+                        DFPartselect(node, DFEvalValue(msbval), DFEvalValue(lsbval))
+                    )
+                )
             else:
                 ret_usednodes.append(self.optimizeConstant(node))
             usednodes_cnt += 1
         ret_usednodes.reverse()
-        return DFPartselect(DFConcat(tuple(ret_usednodes)), DFEvalValue(msb - msboffset), DFEvalValue(lsb + lsboffset))
+        return DFPartselect(
+            DFConcat(tuple(ret_usednodes)),
+            DFEvalValue(msb - msboffset),
+            DFEvalValue(lsb + lsboffset),
+        )
 
     def _isPowerOf2(self, value):
         if value <= 0:
@@ -522,21 +578,42 @@ class VerilogOptimizer(object):
     def replaceOperator(self, node):
         if not isinstance(node, DFOperator):
             return node
-        if (node.operator == 'Times' and
-            (isinstance(node.nextnodes[1], DFEvalValue) and
-             isinstance(node.nextnodes[1].value, int) and
-             self._isPowerOf2(node.nextnodes[1].value))):
-            return DFOperator((node.nextnodes[0], DFEvalValue(int(math.log(node.nextnodes[1].value, 2)))), 'Sll')
-        if (node.operator == 'Times' and
-            (isinstance(node.nextnodes[0], DFEvalValue) and
-             isinstance(node.nextnodes[0].value, int) and
-             self._isPowerOf2(node.nextnodes[0].value))):
-            return DFOperator((node.nextnodes[1], DFEvalValue(int(math.log(node.nextnodes[0].value, 2)))), 'Sll')
-        if (node.operator == 'Divide'
-            and (isinstance(node.nextnodes[1], DFEvalValue) and
-             isinstance(node.nextnodes[1].value, int) and
-                 self._isPowerOf2(node.nextnodes[1].value))):
-            return DFOperator((node.nextnodes[0], DFEvalValue(int(math.log(node.nextnodes[1].value, 2)))), 'Sra')
+        if node.operator == "Times" and (
+            isinstance(node.nextnodes[1], DFEvalValue)
+            and isinstance(node.nextnodes[1].value, int)
+            and self._isPowerOf2(node.nextnodes[1].value)
+        ):
+            return DFOperator(
+                (
+                    node.nextnodes[0],
+                    DFEvalValue(int(math.log(node.nextnodes[1].value, 2))),
+                ),
+                "Sll",
+            )
+        if node.operator == "Times" and (
+            isinstance(node.nextnodes[0], DFEvalValue)
+            and isinstance(node.nextnodes[0].value, int)
+            and self._isPowerOf2(node.nextnodes[0].value)
+        ):
+            return DFOperator(
+                (
+                    node.nextnodes[1],
+                    DFEvalValue(int(math.log(node.nextnodes[0].value, 2))),
+                ),
+                "Sll",
+            )
+        if node.operator == "Divide" and (
+            isinstance(node.nextnodes[1], DFEvalValue)
+            and isinstance(node.nextnodes[1].value, int)
+            and self._isPowerOf2(node.nextnodes[1].value)
+        ):
+            return DFOperator(
+                (
+                    node.nextnodes[0],
+                    DFEvalValue(int(math.log(node.nextnodes[1].value, 2))),
+                ),
+                "Sra",
+            )
         return node
 
     def mergeConcat(self, concatnode):
@@ -600,7 +677,9 @@ class VerilogOptimizer(object):
             elif last_node.lsb.value == n.msb.value + 1:
                 ret_nodes.pop()
                 new_node = DFPartselect(last_node.var, last_node.msb, n.lsb)
-                if self.getWidth(last_node.var) == (last_node.msb.value - n.lsb.value + 1):
+                if self.getWidth(last_node.var) == (
+                    last_node.msb.value - n.lsb.value + 1
+                ):
                     new_node = last_node.var
                 ret_nodes.append(new_node)
                 last_node = new_node
@@ -629,7 +708,9 @@ class VerilogOptimizer(object):
                 pos = 0
                 for t in truenode_list:
                     if t is None:
-                        new_truenode_list.append(DFUndefined(self.getWidth(falsenode_list[pos])))
+                        new_truenode_list.append(
+                            DFUndefined(self.getWidth(falsenode_list[pos]))
+                        )
                     else:
                         new_truenode_list.append(t)
                     pos += 1
@@ -637,13 +718,18 @@ class VerilogOptimizer(object):
                 pos = 0
                 for f in falsenode_list:
                     if f is None:
-                        new_falsenode_list.append(DFUndefined(self.getWidth(truenode_list[pos])))
+                        new_falsenode_list.append(
+                            DFUndefined(self.getWidth(truenode_list[pos]))
+                        )
                     else:
                         new_falsenode_list.append(f)
                     pos += 1
 
-                new_node = DFBranch(last_node.condnode, DFConcat(
-                    tuple(new_truenode_list)), DFConcat(tuple(new_falsenode_list)))
+                new_node = DFBranch(
+                    last_node.condnode,
+                    DFConcat(tuple(new_truenode_list)),
+                    DFConcat(tuple(new_falsenode_list)),
+                )
                 last_node = new_node
                 nodelist.pop()
                 nodelist.append(new_node)
@@ -661,29 +747,29 @@ class VerilogOptimizer(object):
             return node
         if not (node.nextnodes[0] == node.nextnodes[1]):
             return node
-        if node.operator == 'And':
+        if node.operator == "And":
             return node.nextnodes[0]
-        if node.operator == 'Or':
+        if node.operator == "Or":
             return node.nextnodes[0]
-        if node.operator == 'Land':
+        if node.operator == "Land":
             return node.nextnodes[0]
-        if node.operator == 'Lor':
+        if node.operator == "Lor":
             return node.nextnodes[0]
-        if node.operator == 'LessThan':
+        if node.operator == "LessThan":
             return DFEvalValue(0, 1)  # value, width
-        if node.operator == 'GreaterThan':
+        if node.operator == "GreaterThan":
             return DFEvalValue(0, 1)
-        if node.operator == 'LessEq':
+        if node.operator == "LessEq":
             return DFEvalValue(1, 1)
-        if node.operator == 'GreaterEq':
+        if node.operator == "GreaterEq":
             return DFEvalValue(1, 1)
-        if node.operator == 'Eq':
+        if node.operator == "Eq":
             return DFEvalValue(1, 1)
-        if node.operator == 'NotEq':
+        if node.operator == "NotEq":
             return DFEvalValue(0, 1)
-        if node.operator == 'Eql':
+        if node.operator == "Eql":
             return DFEvalValue(1, 1)
-        if node.operator == 'NotEql':
+        if node.operator == "NotEql":
             return DFEvalValue(0, 1)
         return node
 
@@ -696,55 +782,97 @@ class VerilogOptimizer(object):
         left = node.nextnodes[0]
         right = node.nextnodes[1]
 
-        if node.operator == 'And':
+        if node.operator == "And":
             if isinstance(left, DFEvalValue) and left.value == 0:
                 return DFEvalValue(0, self.getWidth(node))
             if isinstance(right, DFEvalValue) and right.value == 0:
                 return DFEvalValue(0, self.getWidth(node))
-            if isinstance(left, DFOperator) and left.operator == 'Unot'\
-                    and left.nextnodes[0] == right:
+            if (
+                isinstance(left, DFOperator)
+                and left.operator == "Unot"
+                and left.nextnodes[0] == right
+            ):
                 return DFEvalValue(0, self.getWidth(node))
-            if isinstance(right, DFOperator) and right.operator == 'Unot'\
-                    and right.nextnodes[0] == left:
+            if (
+                isinstance(right, DFOperator)
+                and right.operator == "Unot"
+                and right.nextnodes[0] == left
+            ):
                 return DFEvalValue(0, self.getWidth(node))
-            if isinstance(left, DFOperator) and left.operator == 'Ulnot'\
-                    and left.nextnodes[0] == right:
+            if (
+                isinstance(left, DFOperator)
+                and left.operator == "Ulnot"
+                and left.nextnodes[0] == right
+            ):
                 if self.getWidth(node) == 1:
                     return DFEvalValue(0, 1)
                 else:
                     return node
-            if isinstance(right, DFOperator) and right.operator == 'Ulnot'\
-                    and right.nextnodes[0] == left:
+            if (
+                isinstance(right, DFOperator)
+                and right.operator == "Ulnot"
+                and right.nextnodes[0] == left
+            ):
                 if self.getWidth(node) == 1:
                     return DFEvalValue(0, 1)
                 else:
                     return node
             return node
-        if node.operator == 'Or':
+        if node.operator == "Or":
             if isinstance(left, DFEvalValue) and left.value == 0:
                 return right
             if isinstance(right, DFEvalValue) and right.value == 0:
                 return left
-            if isinstance(left, DFOperator) and left.operator == 'Unot'\
-                    and left.nextnodes[0] == right:
-                return DFEvalValue(self._evalOperator('Unot', [0, ], self.getWidth(node)), self.getWidth(node))
-            if isinstance(right, DFOperator) and right.operator == 'Unot'\
-                    and right.nextnodes[0] == left:
-                return DFEvalValue(self._evalOperator('Unot', [0, ], self.getWidth(node)), self.getWidth(node))
-            if isinstance(left, DFOperator) and left.operator == 'Ulnot'\
-                    and left.nextnodes[0] == right:
+            if (
+                isinstance(left, DFOperator)
+                and left.operator == "Unot"
+                and left.nextnodes[0] == right
+            ):
+                return DFEvalValue(
+                    self._evalOperator(
+                        "Unot",
+                        [
+                            0,
+                        ],
+                        self.getWidth(node),
+                    ),
+                    self.getWidth(node),
+                )
+            if (
+                isinstance(right, DFOperator)
+                and right.operator == "Unot"
+                and right.nextnodes[0] == left
+            ):
+                return DFEvalValue(
+                    self._evalOperator(
+                        "Unot",
+                        [
+                            0,
+                        ],
+                        self.getWidth(node),
+                    ),
+                    self.getWidth(node),
+                )
+            if (
+                isinstance(left, DFOperator)
+                and left.operator == "Ulnot"
+                and left.nextnodes[0] == right
+            ):
                 if self.getWidth(node) == 1:
                     return DFEvalValue(1, 1)
                 else:
                     return node
-            if isinstance(right, DFOperator) and right.operator == 'Ulnot'\
-                    and right.nextnodes[0] == left:
+            if (
+                isinstance(right, DFOperator)
+                and right.operator == "Ulnot"
+                and right.nextnodes[0] == left
+            ):
                 if self.getWidth(node) == 1:
                     return DFEvalValue(1, 1)
                 else:
                     return node
             return node
-        if node.operator == 'Land':
+        if node.operator == "Land":
             if isinstance(left, DFEvalValue) and left.value == 0:
                 return DFEvalValue(0, 1)
             if isinstance(right, DFEvalValue) and right.value == 0:
@@ -753,86 +881,134 @@ class VerilogOptimizer(object):
                 return right
             if isinstance(right, DFEvalValue) and right.value > 0:
                 return left
-            if isinstance(left, DFOperator) and left.operator == 'Unot'\
-                    and left.nextnodes[0] == right:
+            if (
+                isinstance(left, DFOperator)
+                and left.operator == "Unot"
+                and left.nextnodes[0] == right
+            ):
                 if self.getWidth(node) == 1:
                     return DFEvalValue(0, 1)
                 else:
                     return node
-            if isinstance(right, DFOperator) and right.operator == 'Unot'\
-                    and right.nextnodes[0] == left:
+            if (
+                isinstance(right, DFOperator)
+                and right.operator == "Unot"
+                and right.nextnodes[0] == left
+            ):
                 if self.getWidth(node) == 1:
                     return DFEvalValue(0, 1)
                 else:
                     return node
-            if isinstance(left, DFOperator) and left.operator == 'Ulnot'\
-                    and left.nextnodes[0] == right:
+            if (
+                isinstance(left, DFOperator)
+                and left.operator == "Ulnot"
+                and left.nextnodes[0] == right
+            ):
                 return DFEvalValue(0, 1)
-            if isinstance(right, DFOperator) and right.operator == 'Ulnot'\
-                    and right.nextnodes[0] == left:
+            if (
+                isinstance(right, DFOperator)
+                and right.operator == "Ulnot"
+                and right.nextnodes[0] == left
+            ):
                 return DFEvalValue(0, 1)
-            if isinstance(left, DFOperator) and left.operator == 'Eq'\
-                    and isinstance(right, DFOperator) and right.operator == 'Eq'\
-                    and left.nextnodes[0] == right.nextnodes[0]\
-                    and isinstance(left.nextnodes[1], DFEvalValue)\
-                    and isinstance(right.nextnodes[1], DFEvalValue)\
-                    and left.nextnodes[1].value != right.nextnodes[1].value:
+            if (
+                isinstance(left, DFOperator)
+                and left.operator == "Eq"
+                and isinstance(right, DFOperator)
+                and right.operator == "Eq"
+                and left.nextnodes[0] == right.nextnodes[0]
+                and isinstance(left.nextnodes[1], DFEvalValue)
+                and isinstance(right.nextnodes[1], DFEvalValue)
+                and left.nextnodes[1].value != right.nextnodes[1].value
+            ):
                 return DFEvalValue(0, 1)
-            if isinstance(left, DFOperator) and left.operator == 'Eq'\
-                    and isinstance(right, DFOperator) and right.operator == 'Eq'\
-                    and left.nextnodes[1] == right.nextnodes[1]\
-                    and isinstance(left.nextnodes[0], DFEvalValue)\
-                    and isinstance(right.nextnodes[0], DFEvalValue)\
-                    and left.nextnodes[0].value != right.nextnodes[0].value:
+            if (
+                isinstance(left, DFOperator)
+                and left.operator == "Eq"
+                and isinstance(right, DFOperator)
+                and right.operator == "Eq"
+                and left.nextnodes[1] == right.nextnodes[1]
+                and isinstance(left.nextnodes[0], DFEvalValue)
+                and isinstance(right.nextnodes[0], DFEvalValue)
+                and left.nextnodes[0].value != right.nextnodes[0].value
+            ):
                 return DFEvalValue(0, 1)
-            if isinstance(left, DFOperator) and left.operator == 'Eq'\
-                    and isinstance(right, DFOperator) and right.operator == 'Eq'\
-                    and left.nextnodes[0] == right.nextnodes[1]\
-                    and isinstance(left.nextnodes[1], DFEvalValue)\
-                    and isinstance(right.nextnodes[0], DFEvalValue)\
-                    and left.nextnodes[1].value != right.nextnodes[0].value:
+            if (
+                isinstance(left, DFOperator)
+                and left.operator == "Eq"
+                and isinstance(right, DFOperator)
+                and right.operator == "Eq"
+                and left.nextnodes[0] == right.nextnodes[1]
+                and isinstance(left.nextnodes[1], DFEvalValue)
+                and isinstance(right.nextnodes[0], DFEvalValue)
+                and left.nextnodes[1].value != right.nextnodes[0].value
+            ):
                 return DFEvalValue(0, 1)
-            if isinstance(left, DFOperator) and left.operator == 'Eq'\
-                    and isinstance(right, DFOperator) and right.operator == 'Eq'\
-                    and left.nextnodes[1] == right.nextnodes[0]\
-                    and isinstance(left.nextnodes[0], DFEvalValue)\
-                    and isinstance(right.nextnodes[1], DFEvalValue)\
-                    and left.nextnodes[0].value != right.nextnodes[1].value:
+            if (
+                isinstance(left, DFOperator)
+                and left.operator == "Eq"
+                and isinstance(right, DFOperator)
+                and right.operator == "Eq"
+                and left.nextnodes[1] == right.nextnodes[0]
+                and isinstance(left.nextnodes[0], DFEvalValue)
+                and isinstance(right.nextnodes[1], DFEvalValue)
+                and left.nextnodes[0].value != right.nextnodes[1].value
+            ):
                 return DFEvalValue(0, 1)
-            if isinstance(left, DFOperator) and left.operator == 'Ulnot'\
-                    and isinstance(left.nextnodes[0], DFOperator) and left.nextnodes[0].operator == 'Eq'\
-                    and isinstance(right, DFOperator) and right.operator == 'Eq'\
-                    and left.nextnodes[0].nextnodes[0] == right.nextnodes[0]\
-                    and isinstance(left.nextnodes[0].nextnodes[1], DFEvalValue)\
-                    and isinstance(right.nextnodes[1], DFEvalValue)\
-                    and left.nextnodes[0].nextnodes[1].value != right.nextnodes[1].value:
+            if (
+                isinstance(left, DFOperator)
+                and left.operator == "Ulnot"
+                and isinstance(left.nextnodes[0], DFOperator)
+                and left.nextnodes[0].operator == "Eq"
+                and isinstance(right, DFOperator)
+                and right.operator == "Eq"
+                and left.nextnodes[0].nextnodes[0] == right.nextnodes[0]
+                and isinstance(left.nextnodes[0].nextnodes[1], DFEvalValue)
+                and isinstance(right.nextnodes[1], DFEvalValue)
+                and left.nextnodes[0].nextnodes[1].value != right.nextnodes[1].value
+            ):
                 return right
-            if isinstance(left, DFOperator) and left.operator == 'Ulnot'\
-                    and isinstance(left.nextnodes[0], DFOperator) and left.nextnodes[0].operator == 'Eq'\
-                    and isinstance(right, DFOperator) and right.operator == 'Eq'\
-                    and left.nextnodes[0].nextnodes[1] == right.nextnodes[0]\
-                    and isinstance(left.nextnodes[0].nextnodes[0], DFEvalValue)\
-                    and isinstance(right.nextnodes[1], DFEvalValue)\
-                    and left.nextnodes[0].nextnodes[0].value != right.nextnodes[1].value:
+            if (
+                isinstance(left, DFOperator)
+                and left.operator == "Ulnot"
+                and isinstance(left.nextnodes[0], DFOperator)
+                and left.nextnodes[0].operator == "Eq"
+                and isinstance(right, DFOperator)
+                and right.operator == "Eq"
+                and left.nextnodes[0].nextnodes[1] == right.nextnodes[0]
+                and isinstance(left.nextnodes[0].nextnodes[0], DFEvalValue)
+                and isinstance(right.nextnodes[1], DFEvalValue)
+                and left.nextnodes[0].nextnodes[0].value != right.nextnodes[1].value
+            ):
                 return right
-            if isinstance(right, DFOperator) and right.operator == 'Ulnot'\
-                    and isinstance(right.nextnodes[0], DFOperator) and right.nextnodes[0].operator == 'Eq'\
-                    and isinstance(left, DFOperator) and left.operator == 'Eq'\
-                    and right.nextnodes[0].nextnodes[0] == left.nextnodes[0]\
-                    and isinstance(right.nextnodes[0].nextnodes[1], DFEvalValue)\
-                    and isinstance(left.nextnodes[1], DFEvalValue)\
-                    and right.nextnodes[0].nextnodes[1].value != left.nextnodes[1].value:
+            if (
+                isinstance(right, DFOperator)
+                and right.operator == "Ulnot"
+                and isinstance(right.nextnodes[0], DFOperator)
+                and right.nextnodes[0].operator == "Eq"
+                and isinstance(left, DFOperator)
+                and left.operator == "Eq"
+                and right.nextnodes[0].nextnodes[0] == left.nextnodes[0]
+                and isinstance(right.nextnodes[0].nextnodes[1], DFEvalValue)
+                and isinstance(left.nextnodes[1], DFEvalValue)
+                and right.nextnodes[0].nextnodes[1].value != left.nextnodes[1].value
+            ):
                 return left
-            if isinstance(right, DFOperator) and right.operator == 'Ulnot'\
-                    and isinstance(right.nextnodes[0], DFOperator) and right.nextnodes[0].operator == 'Eq'\
-                    and isinstance(left, DFOperator) and left.operator == 'Eq'\
-                    and right.nextnodes[0].nextnodes[1] == left.nextnodes[0]\
-                    and isinstance(right.nextnodes[0].nextnodes[0], DFEvalValue)\
-                    and isinstance(left.nextnodes[1], DFEvalValue)\
-                    and right.nextnodes[0].nextnodes[0].value != left.nextnodes[1].value:
+            if (
+                isinstance(right, DFOperator)
+                and right.operator == "Ulnot"
+                and isinstance(right.nextnodes[0], DFOperator)
+                and right.nextnodes[0].operator == "Eq"
+                and isinstance(left, DFOperator)
+                and left.operator == "Eq"
+                and right.nextnodes[0].nextnodes[1] == left.nextnodes[0]
+                and isinstance(right.nextnodes[0].nextnodes[0], DFEvalValue)
+                and isinstance(left.nextnodes[1], DFEvalValue)
+                and right.nextnodes[0].nextnodes[0].value != left.nextnodes[1].value
+            ):
                 return left
             return node
-        if node.operator == 'Lor':
+        if node.operator == "Lor":
             if isinstance(left, DFEvalValue) and left.value == 0:
                 return right
             if isinstance(right, DFEvalValue) and right.value == 0:
@@ -841,41 +1017,73 @@ class VerilogOptimizer(object):
                 return DFEvalValue(1, 1)
             if isinstance(right, DFEvalValue) and right.value > 0:
                 return DFEvalValue(1, 1)
-            if isinstance(left, DFOperator) and left.operator == 'Unot'\
-                    and left.nextnodes[0] == right:
+            if (
+                isinstance(left, DFOperator)
+                and left.operator == "Unot"
+                and left.nextnodes[0] == right
+            ):
                 return DFEvalValue(1, 1)
-            if isinstance(right, DFOperator) and right.operator == 'Unot'\
-                    and right.nextnodes[0] == left:
+            if (
+                isinstance(right, DFOperator)
+                and right.operator == "Unot"
+                and right.nextnodes[0] == left
+            ):
                 return DFEvalValue(1, 1)
-            if isinstance(left, DFOperator) and left.operator == 'Ulnot'\
-                    and left.nextnodes[0] == right:
+            if (
+                isinstance(left, DFOperator)
+                and left.operator == "Ulnot"
+                and left.nextnodes[0] == right
+            ):
                 return DFEvalValue(1, 1)
-            if isinstance(right, DFOperator) and right.operator == 'Ulnot'\
-                    and right.nextnodes[0] == left:
+            if (
+                isinstance(right, DFOperator)
+                and right.operator == "Ulnot"
+                and right.nextnodes[0] == left
+            ):
                 return DFEvalValue(1, 1)
-            if isinstance(left, DFOperator) and left.operator == 'Land'\
-                    and isinstance(right, DFOperator) and right.operator == 'Land'\
-                    and isinstance(left.nextnodes[0], DFOperator) and left.nextnodes[0].operator == 'Ulnot'\
-                    and left.nextnodes[0].nextnodes[0] == right.nextnodes[0]\
-                    and left.nextnodes[1] == right.nextnodes[1]:
+            if (
+                isinstance(left, DFOperator)
+                and left.operator == "Land"
+                and isinstance(right, DFOperator)
+                and right.operator == "Land"
+                and isinstance(left.nextnodes[0], DFOperator)
+                and left.nextnodes[0].operator == "Ulnot"
+                and left.nextnodes[0].nextnodes[0] == right.nextnodes[0]
+                and left.nextnodes[1] == right.nextnodes[1]
+            ):
                 return left.nextnodes[1]
-            if isinstance(left, DFOperator) and left.operator == 'Land'\
-                    and isinstance(right, DFOperator) and right.operator == 'Land'\
-                    and isinstance(left.nextnodes[1], DFOperator) and left.nextnodes[1].operator == 'Ulnot'\
-                    and left.nextnodes[1].nextnodes[0] == right.nextnodes[0]\
-                    and left.nextnodes[0] == right.nextnodes[1]:
+            if (
+                isinstance(left, DFOperator)
+                and left.operator == "Land"
+                and isinstance(right, DFOperator)
+                and right.operator == "Land"
+                and isinstance(left.nextnodes[1], DFOperator)
+                and left.nextnodes[1].operator == "Ulnot"
+                and left.nextnodes[1].nextnodes[0] == right.nextnodes[0]
+                and left.nextnodes[0] == right.nextnodes[1]
+            ):
                 return left.nextnodes[0]
-            if isinstance(right, DFOperator) and right.operator == 'Land'\
-                    and isinstance(left, DFOperator) and left.operator == 'Land'\
-                    and isinstance(right.nextnodes[0], DFOperator) and right.nextnodes[0].operator == 'Ulnot'\
-                    and right.nextnodes[0].nextnodes[0] == left.nextnodes[0]\
-                    and right.nextnodes[1] == left.nextnodes[1]:
+            if (
+                isinstance(right, DFOperator)
+                and right.operator == "Land"
+                and isinstance(left, DFOperator)
+                and left.operator == "Land"
+                and isinstance(right.nextnodes[0], DFOperator)
+                and right.nextnodes[0].operator == "Ulnot"
+                and right.nextnodes[0].nextnodes[0] == left.nextnodes[0]
+                and right.nextnodes[1] == left.nextnodes[1]
+            ):
                 return right.nextnodes[1]
-            if isinstance(right, DFOperator) and right.operator == 'Land'\
-                    and isinstance(left, DFOperator) and left.operator == 'Land'\
-                    and isinstance(right.nextnodes[1], DFOperator) and right.nextnodes[1].operator == 'Ulnot'\
-                    and right.nextnodes[1].nextnodes[0] == left.nextnodes[0]\
-                    and right.nextnodes[0] == left.nextnodes[1]:
+            if (
+                isinstance(right, DFOperator)
+                and right.operator == "Land"
+                and isinstance(left, DFOperator)
+                and left.operator == "Land"
+                and isinstance(right.nextnodes[1], DFOperator)
+                and right.nextnodes[1].operator == "Ulnot"
+                and right.nextnodes[1].nextnodes[0] == left.nextnodes[0]
+                and right.nextnodes[0] == left.nextnodes[1]
+            ):
                 return right.nextnodes[0]
             return node
         return node
@@ -891,14 +1099,14 @@ class VerilogOptimizer(object):
                 if retnode is None:
                     retnode = r
                 else:
-                    retnode = DFOperator((retnode, r), 'Land')
+                    retnode = DFOperator((retnode, r), "Land")
             return retnode
         return ret
 
     def _mergeLand(self, node):
         if not isinstance(node, DFOperator):
             return node
-        if node.operator != 'Land':
+        if node.operator != "Land":
             return node
         left = self._mergeLand(node.nextnodes[0])
         right = self._mergeLand(node.nextnodes[1])
@@ -915,8 +1123,11 @@ class VerilogOptimizer(object):
         ret_exist_list = []
         for l in landlist:
             s = l
-            not_s = l.nextnodes[0] if isinstance(
-                l, DFOperator) and l.operator == 'Ulnot' else DFOperator((l,), 'Ulnot')
+            not_s = (
+                l.nextnodes[0]
+                if isinstance(l, DFOperator) and l.operator == "Ulnot"
+                else DFOperator((l,), "Ulnot")
+            )
             if not_s in ret_exist_list:
                 return (DFEvalValue(0, 1),)
             if not (s in ret_exist_list):
@@ -932,16 +1143,16 @@ class VerilogOptimizer(object):
                 if retnode is None:
                     retnode = r
                 else:
-                    retnode = DFOperator((retnode, r), 'Lor')
+                    retnode = DFOperator((retnode, r), "Lor")
             return retnode
         return ret
 
     def _mergeLor(self, node):
         if not isinstance(node, DFOperator):
             return node
-        if node.operator == 'Land':
+        if node.operator == "Land":
             return self.mergeLand(node)
-        if node.operator != 'Lor':
+        if node.operator != "Lor":
             return node
         left = self._mergeLor(node.nextnodes[0])
         right = self._mergeLor(node.nextnodes[1])
@@ -958,14 +1169,18 @@ class VerilogOptimizer(object):
         ret_exist_list = []
         for l in landlist:
             s = l
-            not_s = l.nextnodes[0] if isinstance(
-                l, DFOperator) and l.operator == 'Ulnot' else DFOperator((l,), 'Ulnot')
+            not_s = (
+                l.nextnodes[0]
+                if isinstance(l, DFOperator) and l.operator == "Ulnot"
+                else DFOperator((l,), "Ulnot")
+            )
             if not_s in ret_exist_list:
                 return (DFEvalValue(1, 1),)
             if not (s in ret_exist_list):
                 ret_list.append(l)
                 ret_exist_list.append(s)
         return tuple(sorted(ret_list, key=lambda x: x.tocode(), reverse=True))
+
 
 # -------------------------------------------------------------------------------
 

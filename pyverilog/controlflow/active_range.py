@@ -6,10 +6,6 @@
 # Copyright (C) 2013, Shinya Takamaeda-Yamazaki
 # License: Apache 2.0
 # -------------------------------------------------------------------------------
-from __future__ import absolute_import
-from __future__ import print_function
-import sys
-import os
 
 import pyverilog.utils.util as util
 import pyverilog.utils.signaltype as signaltype
@@ -20,17 +16,27 @@ from pyverilog.controlflow.controlflow_analyzer import VerilogControlflowAnalyze
 
 
 class VerilogActiveAnalyzer(VerilogControlflowAnalyzer):
-    def __init__(self, topmodule, terms, binddict,
-                 resolved_terms, resolved_binddict, constlist):
-        VerilogControlflowAnalyzer.__init__(self, topmodule, terms, binddict,
-                                            resolved_terms, resolved_binddict, constlist)
+    def __init__(
+        self, topmodule, terms, binddict, resolved_terms, resolved_binddict, constlist
+    ):
+        VerilogControlflowAnalyzer.__init__(
+            self,
+            topmodule,
+            terms,
+            binddict,
+            resolved_terms,
+            resolved_binddict,
+            constlist,
+        )
 
-    def getActiveConditions(self, termname, op='>', conditionvalue=0):
+    def getActiveConditions(self, termname, op=">", conditionvalue=0):
         if not termname in self.resolved_binddict:
             return ()
         tree = self.makeConditionalTree(termname, step=0)
         funcdict = splitter.split(tree)
-        condlists = self.getActiveFuncdictKeys(funcdict, op=op, conditionvalue=conditionvalue)
+        condlists = self.getActiveFuncdictKeys(
+            funcdict, op=op, conditionvalue=conditionvalue
+        )
         active_conditions = self.inferActiveConditions(condlists)
         return active_conditions  # OR-style
 
@@ -77,12 +83,12 @@ class VerilogActiveAnalyzer(VerilogControlflowAnalyzer):
         tree = self.makeTree(termname)
         return tree
 
-    def getActiveFuncdictKeys(self, funcdict, op='>', conditionvalue=0):
+    def getActiveFuncdictKeys(self, funcdict, op=">", conditionvalue=0):
         activekeys = []
         for _condlist, func in funcdict.items():
             condlist = splitter.remove_reset_condlist(_condlist)
             if isinstance(func, DFEvalValue):
-                e = eval('func.value' + op + str(conditionvalue))
+                e = eval("func.value" + op + str(conditionvalue))
                 if e:
                     activekeys.append(condlist)
         return activekeys
@@ -165,7 +171,9 @@ class VerilogActiveAnalyzer(VerilogControlflowAnalyzer):
 
     def walkActiveCond(self, cond):
         if isinstance(cond, DFTerminal):
-            return self._walkActiveCond(DFOperator((cond, DFEvalValue(0)), 'GreaterThan'))
+            return self._walkActiveCond(
+                DFOperator((cond, DFEvalValue(0)), "GreaterThan")
+            )
         return self._walkActiveCond(cond)
 
     def _walkActiveCond(self, cond):
@@ -212,36 +220,52 @@ class VerilogActiveAnalyzer(VerilogControlflowAnalyzer):
             return ActiveTerm(l.name, range_pairs, minval, maxval)
 
         if isinstance(r, DFTerminal):
-            new_op = re.sub('Greater', 'TMP', cond.operator)
-            new_op = re.sub('Less', 'Greater', new_op)
-            new_op = re.sub('TMP', 'Less', new_op)
+            new_op = re.sub("Greater", "TMP", cond.operator)
+            new_op = re.sub("Less", "Greater", new_op)
+            new_op = re.sub("TMP", "Less", new_op)
             infval = inference.infer(new_op, l)
             minval = 0
             maxval = util.maxValue(self.getWidth(r.name))
             range_pairs = ((infval.minval, infval.maxval),)
             return ActiveTerm(r.name, range_pairs, minval, maxval)
 
-        if cond.operator == 'Eq':
+        if cond.operator == "Eq":
             lactivecond = self.walkActiveCond(l)
             ractivecond = self.walkActiveCond(r)
-            if lactivecond is not None and ractivecond is None and isinstance(r, DFEvalValue):
+            if (
+                lactivecond is not None
+                and ractivecond is None
+                and isinstance(r, DFEvalValue)
+            ):
                 if r.value > 0:
                     return lactivecond
                 return self._activecond_opNot(lactivecond)
-            if lactivecond is None and ractivecond is not None and isinstance(l, DFEvalValue):
+            if (
+                lactivecond is None
+                and ractivecond is not None
+                and isinstance(l, DFEvalValue)
+            ):
                 if l.value > 0:
                     return ractivecond
                 return self._activecond_opNot(ractivecond)
             return self._activecond_opAnd(lactivecond, ractivecond)
 
-        if cond.operator == 'NotEq':
+        if cond.operator == "NotEq":
             lactivecond = self.walkActiveCond(l)
             ractivecond = self.walkActiveCond(r)
-            if lactivecond is not None and ractivecond is None and isinstance(r, DFEvalValue):
+            if (
+                lactivecond is not None
+                and ractivecond is None
+                and isinstance(r, DFEvalValue)
+            ):
                 if r.value == 0:
                     return lactivecond
                 return self._activecond_opNot(lactivecond)
-            if lactivecond is None and ractivecond is not None and isinstance(l, DFEvalValue):
+            if (
+                lactivecond is None
+                and ractivecond is not None
+                and isinstance(l, DFEvalValue)
+            ):
                 if l.value == 0:
                     return ractivecond
                 return self._activecond_opNot(ractivecond)
@@ -363,7 +387,9 @@ class VerilogActiveAnalyzer(VerilogControlflowAnalyzer):
             activelist = []
             for rcondition in right.conditions:
                 for condition in left.conditions:
-                    new_condition = self._activecond_opAnd_right_condition(condition, rcondition)
+                    new_condition = self._activecond_opAnd_right_condition(
+                        condition, rcondition
+                    )
                     activelist.append(new_condition)
             return ActiveConditionList(tuple(activelist))
         return None
@@ -461,7 +487,12 @@ class ActiveTerm(object):
         self.range_pairs = range_pairs
 
     def __eq__(self, o):
-        return self.name == o.name and self.range_pairs == o.range_pairs and self.minval == o.minval and self.maxval == o.maxval
+        return (
+            self.name == o.name
+            and self.range_pairs == o.range_pairs
+            and self.minval == o.minval
+            and self.maxval == o.maxval
+        )
 
     def opNot(self):
         if len(self.range_pairs) > 0:
@@ -481,42 +512,51 @@ class ActiveTerm(object):
         self.range_pairs = tuple(new_range_pairs)
 
     def __repr__(self):
-        ret = '('
-        ret += util.toFlatname(self.name) + ' '
+        ret = "("
+        ret += util.toFlatname(self.name) + " "
         for rmin, rmax in self.range_pairs:
-            ret += str(rmin) + ':' + str(rmax) + ', '
+            ret += str(rmin) + ":" + str(rmax) + ", "
         ret = ret[:-2]
-        ret += ')'
+        ret += ")"
         return ret
 
     def tocode(self):
-        ret = '('
+        ret = "("
         for rmin, rmax in self.range_pairs:
-            ret += '('
-            ret += str(rmin) + '<=' + util.toFlatname(self.name)
+            ret += "("
+            ret += str(rmin) + "<=" + util.toFlatname(self.name)
             if rmax is not None:
-                ret += '&&'
-                ret += util.toFlatname(self.name) + '<=' + str(rmax)
-            ret += ')'
-            ret += '||'
-        return ret[:-2] + ')'
+                ret += "&&"
+                ret += util.toFlatname(self.name) + "<=" + str(rmax)
+            ret += ")"
+            ret += "||"
+        return ret[:-2] + ")"
 
     def toTree(self):
         retnode = None
         for rmin, rmax in self.range_pairs:
             if rmax is None:
-                t = DFOperator((DFEvalValue(rmin), DFTerminal(self.name)), 'LessEq')
+                t = DFOperator((DFEvalValue(rmin), DFTerminal(self.name)), "LessEq")
                 if retnode is None:
                     retnode = t
                 else:
-                    retnode = DFOperator((retnode, t), 'Lor')
+                    retnode = DFOperator((retnode, t), "Lor")
             else:
-                t = DFOperator((DFOperator((DFEvalValue(rmin), DFTerminal(self.name)), 'LessEq'), DFOperator(
-                    (DFTerminal(self.name), DFEvalValue(rmax)), 'GreaterEq')), 'Land')
+                t = DFOperator(
+                    (
+                        DFOperator(
+                            (DFEvalValue(rmin), DFTerminal(self.name)), "LessEq"
+                        ),
+                        DFOperator(
+                            (DFTerminal(self.name), DFEvalValue(rmax)), "GreaterEq"
+                        ),
+                    ),
+                    "Land",
+                )
                 if retnode is None:
                     retnode = t
                 else:
-                    retnode = DFOperator((retnode, t), 'Lor')
+                    retnode = DFOperator((retnode, t), "Lor")
         return retnode
 
     def include(self, termname):
@@ -557,12 +597,12 @@ class ActiveCondition(object):
 
     def tocode(self):
         if len(self.termdict) == 0:
-            return '1'
-        ret = '('
+            return "1"
+        ret = "("
         for name, term in self.termdict.items():
             ret += term.tocode()
-            ret += '&&'
-        return ret[:-2] + ')'
+            ret += "&&"
+        return ret[:-2] + ")"
 
     def toTree(self):
         if len(self.termdict) == 0:
@@ -573,16 +613,16 @@ class ActiveCondition(object):
             if retnode is None:
                 retnode = t
             else:
-                retnode = DFOperator((retnode, t), 'Land')
+                retnode = DFOperator((retnode, t), "Land")
         return retnode
 
     def __repr__(self):
         if len(self.termdict) == 0:
-            return '(empty)'
-        ret = '('
+            return "(empty)"
+        ret = "("
         for name, term in sorted(self.termdict.items(), key=lambda x: str(x[0])):
-            ret += term.__repr__() + ' && '
-        ret = ret[:-4] + ')'
+            ret += term.__repr__() + " && "
+        ret = ret[:-4] + ")"
         return ret
 
     def __len__(self):
@@ -665,10 +705,10 @@ class ActiveConditionList(object):
         return len(self.conditions)
 
     def __repr__(self):
-        ret = ''
+        ret = ""
         for c in self.conditions:
-            ret += c.__repr__() + ' || '
-        ret = ret[:-4] + ''
+            ret += c.__repr__() + " || "
+        ret = ret[:-4] + ""
         return ret
 
     def andterm(self, name, term):

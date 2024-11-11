@@ -21,19 +21,30 @@ from pyverilog.dataflow.merge import VerilogDataflowMerge
 
 
 class VerilogDataflowWalker(VerilogDataflowMerge):
-    def __init__(self, topmodule, terms, binddict, resolved_terms, resolved_binddict, constlist):
-        VerilogDataflowMerge.__init__(self, topmodule, terms, binddict,
-                                      resolved_terms, resolved_binddict, constlist)
+    def __init__(
+        self, topmodule, terms, binddict, resolved_terms, resolved_binddict, constlist
+    ):
+        VerilogDataflowMerge.__init__(
+            self,
+            topmodule,
+            terms,
+            binddict,
+            resolved_terms,
+            resolved_binddict,
+            constlist,
+        )
 
     def walkBind(self, name, step=0):
         termname = util.toTermname(name)
         if not termname in self.terms:
-            raise verror.DefinitionError('No such signals: %s' % str(name))
+            raise verror.DefinitionError("No such signals: %s" % str(name))
         tree = self.getTree(termname)
         walked_tree = self.walkTree(tree, visited=set(), step=step)
         return replace.replaceUndefined(walked_tree, termname)
 
-    def walkTree(self, tree, visited=set([]), step=0, delay=False, msb=None, lsb=None, ptr=None):
+    def walkTree(
+        self, tree, visited=set([]), step=0, delay=False, msb=None, lsb=None, ptr=None
+    ):
         if tree is None:
             return DFUndefined(32)
 
@@ -62,23 +73,35 @@ class VerilogDataflowWalker(VerilogDataflowMerge):
             nptr = None
             if self.getTermDims(termname) is not None:
                 if ptr is None:
-                    raise verror.FormatError('Array variable requires an pointer.')
+                    raise verror.FormatError("Array variable requires an pointer.")
                 if msb is not None and lsb is not None:
                     return tree
                 nptr = ptr
 
             nextstep = step
             if signaltype.isReg(termtype):
-                if (not self.isCombination(termname) and
-                    not signaltype.isRename(termtype) and
-                        nextstep == 0):
+                if (
+                    not self.isCombination(termname)
+                    and not signaltype.isRename(termtype)
+                    and nextstep == 0
+                ):
                     return tree
-                if (not self.isCombination(termname)
-                        and not signaltype.isRename(termtype)):
+                if not self.isCombination(termname) and not signaltype.isRename(
+                    termtype
+                ):
                     nextstep -= 1
 
-            return self.walkTree(self.getTree(termname, nptr),
-                                 visited | set([termname, ]), nextstep, delay)
+            return self.walkTree(
+                self.getTree(termname, nptr),
+                visited
+                | set(
+                    [
+                        termname,
+                    ]
+                ),
+                nextstep,
+                delay,
+            )
 
         if isinstance(tree, DFBranch):
             condnode = self.walkTree(tree.condnode, visited, step, delay)
@@ -98,16 +121,20 @@ class VerilogDataflowWalker(VerilogDataflowMerge):
             var = self.walkTree(tree.var, visited, step, delay, msb=msb, lsb=lsb)
             if isinstance(var, DFPartselect):
                 child_lsb = self.getTerm(str(tree.var)).lsb.eval()
-                return DFPartselect(var.var, DFIntConst(str(msb.eval() + var.lsb.eval() - child_lsb)),
-                                    DFIntConst(str(lsb.eval() + var.lsb.eval() - child_lsb)))
+                return DFPartselect(
+                    var.var,
+                    DFIntConst(str(msb.eval() + var.lsb.eval() - child_lsb)),
+                    DFIntConst(str(lsb.eval() + var.lsb.eval() - child_lsb)),
+                )
             return DFPartselect(var, msb, lsb)
 
         if isinstance(tree, DFPointer):
             ptr = self.walkTree(tree.ptr, visited, step, delay)
             var = self.walkTree(tree.var, visited, step, delay, ptr=ptr)
             if isinstance(tree.var, DFTerminal):
-                if (self.getTermDims(tree.var.name) is not None and
-                        not (isinstance(var, DFTerminal) and var.name == tree.var.name)):
+                if self.getTermDims(tree.var.name) is not None and not (
+                    isinstance(var, DFTerminal) and var.name == tree.var.name
+                ):
                     return var
             return DFPointer(var, ptr)
 
@@ -118,4 +145,5 @@ class VerilogDataflowWalker(VerilogDataflowMerge):
             return DFConcat(tuple(nextnodes))
 
         raise verror.DefinitionError(
-            'Undefined Node Type: %s : %s' % (str(type(tree)), str(tree)))
+            "Undefined Node Type: %s : %s" % (str(type(tree)), str(tree))
+        )

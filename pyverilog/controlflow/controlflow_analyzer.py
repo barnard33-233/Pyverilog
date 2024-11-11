@@ -8,10 +8,6 @@
 # Copyright (C) 2013, Shinya Takamaeda-Yamazaki
 # License: Apache 2.0
 # -------------------------------------------------------------------------------
-from __future__ import absolute_import
-from __future__ import print_function
-import sys
-import os
 
 import pyverilog.utils.util as util
 import pyverilog.utils.signaltype as signaltype
@@ -25,13 +21,28 @@ import pyverilog.controlflow.transition as transition
 
 
 class VerilogControlflowAnalyzer(VerilogSubset):
-    def __init__(self, topmodule, terms, binddict,
-                 resolved_terms, resolved_binddict,
-                 constlist, fsm_vars=('fsm', 'state', 'count', 'cnt', 'step', 'mode')):
-        VerilogSubset.__init__(self, topmodule, terms, binddict,
-                               resolved_terms, resolved_binddict, constlist)
-        self.treewalker = VerilogDataflowWalker(topmodule, terms, binddict,
-                                                resolved_terms, resolved_binddict, constlist)
+    def __init__(
+        self,
+        topmodule,
+        terms,
+        binddict,
+        resolved_terms,
+        resolved_binddict,
+        constlist,
+        fsm_vars=("fsm", "state", "count", "cnt", "step", "mode"),
+    ):
+        VerilogSubset.__init__(
+            self,
+            topmodule,
+            terms,
+            binddict,
+            resolved_terms,
+            resolved_binddict,
+            constlist,
+        )
+        self.treewalker = VerilogDataflowWalker(
+            topmodule, terms, binddict, resolved_terms, resolved_binddict, constlist
+        )
         self.fsm_vars = fsm_vars
 
     def getLoops(self):
@@ -48,12 +59,10 @@ class VerilogControlflowAnalyzer(VerilogSubset):
 
     def getFiniteStateMachines(self):
         statemachines = {}
-        for termname, bindlist in self.resolved_binddict.items():
+        for termname, _ in self.resolved_binddict.items():
             if not self.isFsmVar(termname):
                 continue
             funcdict, delaycnt = self.getFuncdict(termname)
-            if len(funcdict) > 0:
-                print("FSM signal: %s, Condition list length: %d" % (str(termname), len(funcdict)))
             fsm = self.getFiniteStateMachine(termname, funcdict)
             if fsm.size() > 0:
                 fsm.set_delaycnt(delaycnt)
@@ -73,8 +82,13 @@ class VerilogControlflowAnalyzer(VerilogSubset):
             node = transition.walkCondlist(condlist, termname, width)
             if node is None:
                 continue
-            statenode_list = node.nodelist if isinstance(
-                node, transition.StateNodeList) else [node, ]
+            statenode_list = (
+                node.nodelist
+                if isinstance(node, transition.StateNodeList)
+                else [
+                    node,
+                ]
+            )
             for statenode in statenode_list:
                 fsm.construct(func.value, statenode)
         return fsm
@@ -102,11 +116,20 @@ class VerilogControlflowAnalyzer(VerilogSubset):
 
     def getWidth(self, termname):
         term = self.getTerm(termname)
+        if term is None:
+            return 0
         msb = self.optimizer.optimizeConstant(term.msb)
         lsb = self.optimizer.optimizeConstant(term.lsb)
-        width = DFIntConst('32')
+        width = DFIntConst("32")
         if msb is not None and lsb is not None:
-            return abs(self.optimizer.optimizeConstant(DFOperator((msb, lsb), 'Minus')).value) + 1
+            return (
+                abs(
+                    self.optimizer.optimizeConstant(
+                        DFOperator((msb, lsb), "Minus")
+                    ).value
+                )
+                + 1
+            )
         return self.optimizer.optimizeConstant(width).value
 
     def makeTree(self, termname):
@@ -193,7 +216,9 @@ class FiniteStateMachine(object):
                     elif cond is None:
                         dst_cond_dict[dst] = None
                     else:
-                        dst_cond_dict[dst] = evaluate.optimize(DFOperator((cur_cond, cond), 'Lor'))
+                        dst_cond_dict[dst] = evaluate.optimize(
+                            DFOperator((cur_cond, cond), "Lor")
+                        )
             new_dstdict = {}
             for dst, cond in dst_cond_dict.items():
                 if isinstance(cond, DFEvalValue) and cond.value > 0:
@@ -206,34 +231,35 @@ class FiniteStateMachine(object):
     def view(self):
         for cond, dst in self.any.items():
             s = []
-            s.append('any -- ')
+            s.append("any -- ")
             if cond is not None:
                 s.append(cond.tocode())
             else:
-                s.append('None')
-            s.append('--> %d' % dst)
-            print(''.join(s))
+                s.append("None")
+            s.append("--> %d" % dst)
+            print("".join(s))
         for src, dstdict in self.fsm.items():
             for cond, dst in dstdict.items():
                 s = []
-                s.append('%d --' % src)
+                s.append("%d --" % src)
                 if cond is not None:
                     s.append(cond.tocode())
                 else:
-                    s.append('None')
-                s.append('--> %d' % dst)
-                print(''.join(s))
+                    s.append("None")
+                s.append("--> %d" % dst)
+                print("".join(s))
 
-    def tograph(self, filename='fsm.png', nolabel=False):
+    def tograph(self, filename="fsm.png", nolabel=False):
         import pygraphviz as pgv
-        #graph = pgv.AGraph(strict=False, directed=True)
+
+        # graph = pgv.AGraph(strict=False, directed=True)
         graph = pgv.AGraph(directed=True)
         for src, dstdict in self.fsm.items():
             graph.add_node(str(src), label=str(src))
             for cond, dst in dstdict.items():
                 graph.add_node(str(dst), label=str(dst))
                 if nolabel:
-                    graph.add_edge(str(src), str(dst), label='')
+                    graph.add_edge(str(src), str(dst), label="")
                 else:
                     graph.add_edge(str(src), str(dst), label=str(cond))
         srcs = self.fsm.keys()
@@ -241,12 +267,12 @@ class FiniteStateMachine(object):
             for cond, dst in self.any.items():
                 graph.add_node(str(dst), label=str(dst))
                 if nolabel:
-                    graph.add_edge(str(src), str(dst), label='')
+                    graph.add_edge(str(src), str(dst), label="")
                 else:
                     graph.add_edge(str(src), str(dst), label=str(cond))
 
-        graph.write('file.dot')
-        graph.layout(prog='dot')
+        graph.write("file.dot")
+        graph.layout(prog="dot")
         graph.draw(filename)
 
     def get_loop(self):

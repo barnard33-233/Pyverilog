@@ -6,10 +6,6 @@
 # Copyright (C) 2015, Shinya Takamaeda-Yamazaki
 # License: Apache 2.0
 # -------------------------------------------------------------------------------
-from __future__ import absolute_import
-from __future__ import print_function
-import sys
-import os
 
 import pyverilog.vparser.ast as vast
 from pyverilog.vparser.ast import Node
@@ -23,16 +19,19 @@ def replaceIdentifiers(node, ids):
 def ischild(node, attr):
     if not isinstance(node, Node):
         return False
-    excludes = ('coord', 'attr_names',)
-    if attr.startswith('__'):
+    excludes = (
+        "coord",
+        "attr_names",
+    )
+    if attr.startswith("__"):
         return False
     if attr in excludes:
         return False
-    attr_names = getattr(node, 'attr_names')
+    attr_names = getattr(node, "attr_names")
     if attr in attr_names:
         return False
     attr_test = getattr(node, attr)
-    if hasattr(attr_test, '__call__'):
+    if hasattr(attr_test, "__call__"):
         return False
     return True
 
@@ -50,7 +49,7 @@ class IdentifierReplace(object):
         self.ids = ids
 
     def visit(self, node):
-        method = 'visit_' + node.__class__.__name__
+        method = "visit_" + node.__class__.__name__
         visitor = getattr(self, method, self.generic_visit)
         ret = visitor(node)
         if ret is None:
@@ -62,7 +61,7 @@ class IdentifierReplace(object):
             ret = None
             if child is None:
                 continue
-            if (isinstance(child, list) or isinstance(child, tuple)):
+            if isinstance(child, list) or isinstance(child, tuple):
                 r = []
                 for c in child:
                     r.append(self.visit(c))

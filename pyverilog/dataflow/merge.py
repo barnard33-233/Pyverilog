@@ -6,11 +6,6 @@
 # Copyright (C) 2013, Shinya Takamaeda-Yamazaki
 # License: Apache 2.0
 # -------------------------------------------------------------------------------
-from __future__ import absolute_import
-from __future__ import print_function
-import sys
-import os
-
 import pyverilog.utils.verror as verror
 import pyverilog.utils.signaltype as signaltype
 import pyverilog.dataflow.reorder as reorder
@@ -20,7 +15,9 @@ from pyverilog.dataflow.optimizer import VerilogOptimizer
 
 
 class VerilogDataflowMerge(object):
-    def __init__(self, topmodule, terms, binddict, resolved_terms, resolved_binddict, constlist):
+    def __init__(
+        self, topmodule, terms, binddict, resolved_terms, resolved_binddict, constlist
+    ):
         self.topmodule = topmodule
         self.terms = terms
         self.binddict = binddict
@@ -56,47 +53,48 @@ class VerilogDataflowMerge(object):
     def getTermtype(self, termname):
         term = self.getTerm(termname)
         if term is None:
-            raise verror.DefinitionError('No such Term: %s' % termname)
+            raise verror.DefinitionError("No such Term: %s" % termname)
         return term.termtype
 
     def getTermDims(self, termname):
         term = self.getTerm(termname)
         if term is None:
-            raise verror.DefinitionError('No such Term: %s' % termname)
+            raise verror.DefinitionError("No such Term: %s" % termname)
         return term.dims
 
     def getAssignType(self, termname, bind):
         termtype = self.getTermtype(termname)
         if signaltype.isWire(termtype):
-            return 'assign'
-        if signaltype.isWireArray(termtype):
-            return 'assign'
+            return "assign"
+        # if signaltype.isWireArray(termtype):
+        #     return "assign"
         if signaltype.isReg(termtype):
             if bind.isClockEdge():
-                return 'clockedge'
-            return 'combination'
+                return "clockedge"
+            return "combination"
         if signaltype.isInteger(termtype):
             if bind.isClockEdge():
-                return 'clockedge'
-            return 'combination'
+                return "clockedge"
+            return "combination"
         if signaltype.isParameter(termtype):
-            return 'parameter'
+            return "parameter"
         if signaltype.isLocalparam(termtype):
-            return 'localparam'
+            return "localparam"
         if signaltype.isOutput(termtype):
-            return 'assign'
+            return "assign"
         if signaltype.isInout(termtype):
-            return 'assign'
+            return "assign"
         if signaltype.isInput(termtype):
-            return 'assign'
+            return "assign"
         if signaltype.isFunction(termtype):
-            return 'assign'
+            return "assign"
         if signaltype.isRename(termtype):
-            return 'assign'
+            return "assign"
         if signaltype.isGenvar(termtype):
-            return 'genvar'
-        raise verror.DefinitionError('Unexpected Assignment Type: %s : %s' %
-                                     (str(termname), str(termtype)))
+            return "genvar"
+        raise verror.DefinitionError(
+            "Unexpected Assignment Type: %s : %s" % (str(termname), str(termtype))
+        )
 
     def isCombination(self, termname):
         bindlist = self.getBindlist(termname)
@@ -124,11 +122,11 @@ class VerilogDataflowMerge(object):
                         discretebinds[ptrval] = []
                     discretebinds[ptrval] += [bind]
                 else:
-                    if not 'any' in discretebinds:
-                        discretebinds['any'] = []
-                    discretebinds['any'] += [bind]
+                    if not "any" in discretebinds:
+                        discretebinds["any"] = []
+                    discretebinds["any"] += [bind]
 
-            if 'any' in discretebinds:
+            if "any" in discretebinds:
                 return DFTerminal(termname)
 
             if isinstance(ptr, DFEvalValue):
@@ -149,7 +147,7 @@ class VerilogDataflowMerge(object):
                     truetree = discretebinds[c][0].tree
                 else:
                     truetree = self.getMergedTree(discretebinds[c])
-                ret = DFBranch(DFOperator((DFEvalValue(c), ptr), 'Eq'), truetree, ret)
+                ret = DFBranch(DFOperator((DFEvalValue(c), ptr), "Eq"), truetree, ret)
             return ret
 
         if len(bindlist) == 1:
@@ -174,7 +172,11 @@ class VerilogDataflowMerge(object):
         if isinstance(tree, DFEvalValue):
             return set()
         if isinstance(tree, DFTerminal):
-            return set([tree.name, ])
+            return set(
+                [
+                    tree.name,
+                ]
+            )
         if isinstance(tree, DFBranch):
             ret = set()
             ret |= self.getSources(tree.condnode)
@@ -206,7 +208,9 @@ class VerilogDataflowMerge(object):
             ret = set()
             ret |= self.getSources(tree.nextnode)
             return ret
-        raise verror.DefinitionError('Undefined Node Type: %s : %s' % (str(type(tree)), str(tree)))
+        raise verror.DefinitionError(
+            "Undefined Node Type: %s : %s" % (str(type(tree)), str(tree))
+        )
 
     def getBindSources(self, termname):
         sources = set()
@@ -247,7 +251,11 @@ class VerilogDataflowMerge(object):
         if isinstance(tree, DFEvalValue):
             return set()
         if isinstance(tree, DFTerminal):
-            return set([tree.name, ])
+            return set(
+                [
+                    tree.name,
+                ]
+            )
         if isinstance(tree, DFBranch):
             ret = set()
             ret |= self.getTreeSources(tree.condnode)
@@ -275,7 +283,9 @@ class VerilogDataflowMerge(object):
             for n in tree.nextnodes:
                 ret |= self.getTreeSources(n)
             return ret
-        raise verror.DefinitionError('Undefined Node Type: %s : %s' % (str(type(tree)), str(tree)))
+        raise verror.DefinitionError(
+            "Undefined Node Type: %s : %s" % (str(type(tree)), str(tree))
+        )
 
     def getMergedTree(self, optimized_bindlist):
         concatlist = []
@@ -286,12 +296,20 @@ class VerilogDataflowMerge(object):
             lsb = 0 if x.lsb is None else x.lsb.value
             ptr = 0 if not isinstance(x.ptr, DFEvalValue) else x.ptr.value
             term = self.getTerm(x.dest)
-            length = abs(self.optimizer.optimize(term.msb).value -
-                         self.optimizer.optimize(term.lsb).value) + 1
+            length = (
+                abs(
+                    self.optimizer.optimize(term.msb).value
+                    - self.optimizer.optimize(term.lsb).value
+                )
+                + 1
+            )
             return ptr * length + lsb
+
         for bind in sorted(optimized_bindlist, key=bindkey):
             lsb = 0 if bind.lsb is None else bind.lsb.value
-            if last_ptr != (-1 if not isinstance(bind.ptr, DFEvalValue) else bind.ptr.value):
+            if last_ptr != (
+                -1 if not isinstance(bind.ptr, DFEvalValue) else bind.ptr.value
+            ):
                 continue
             if last_msb + 1 < lsb:
                 concatlist.append(DFUndefined(last_msb - lsb - 1))
@@ -329,21 +347,38 @@ class VerilogDataflowMerge(object):
             lsb = 0 if x.lsb is None else x.lsb.value
             ptr = 0 if not isinstance(x.ptr, DFEvalValue) else x.ptr.value
             term = self.getTerm(x.dest)
-            length = abs(self.optimizer.optimize(term.msb).value -
-                         self.optimizer.optimize(term.lsb).value) + 1
+            length = (
+                abs(
+                    self.optimizer.optimize(term.msb).value
+                    - self.optimizer.optimize(term.lsb).value
+                )
+                + 1
+            )
             return ptr * length + lsb
 
         for bind in sorted(bindlist, key=bindkey):
             if last_bind is None:
                 merged_bindlist.append(copy.deepcopy(bind))
                 last_bind = copy.deepcopy(bind)
-            elif isinstance(last_bind.ptr, DFEvalValue) and isinstance(bind.ptr, DFEvalValue) and last_bind.ptr.value != bind.ptr.value:
+            elif (
+                isinstance(last_bind.ptr, DFEvalValue)
+                and isinstance(bind.ptr, DFEvalValue)
+                and last_bind.ptr.value != bind.ptr.value
+            ):
                 merged_bindlist.append(copy.deepcopy(bind))
                 last_bind = copy.deepcopy(bind)
-            elif last_bind.lsb is None or bind.lsb is None or last_bind is None or bind.msb is None:
+            elif (
+                last_bind.lsb is None
+                or bind.lsb is None
+                or last_bind is None
+                or bind.msb is None
+            ):
                 merged_bindlist.append(copy.deepcopy(bind))
                 last_bind = copy.deepcopy(bind)
-            elif last_bind.lsb.value == bind.lsb.value and last_bind.msb.value == bind.msb.value:
+            elif (
+                last_bind.lsb.value == bind.lsb.value
+                and last_bind.msb.value == bind.msb.value
+            ):
                 new_tree = self.mergeTree(last_bind.tree, bind.tree)
                 new_tree = self.optimizer.optimize(new_tree)
                 merged_bindlist.pop()
@@ -361,9 +396,17 @@ class VerilogDataflowMerge(object):
             cond_fst = self.optimizer.optimize(first.condnode)
             cond_snd = self.optimizer.optimize(second.condnode)
             if cond_fst == cond_snd:
-                return DFBranch(cond_fst, self.mergeTree(first.truenode, second.truenode), self.mergeTree(first.falsenode, second.falsenode))
+                return DFBranch(
+                    cond_fst,
+                    self.mergeTree(first.truenode, second.truenode),
+                    self.mergeTree(first.falsenode, second.falsenode),
+                )
             appended = copy.deepcopy(first)
-            return DFBranch(cond_snd, self.appendTail(appended, second.truenode), self.appendTail(appended, second.falsenode))
+            return DFBranch(
+                cond_snd,
+                self.appendTail(appended, second.truenode),
+                self.appendTail(appended, second.falsenode),
+            )
 
         if first is not None and second is None:
             return first
@@ -378,28 +421,42 @@ class VerilogDataflowMerge(object):
         if isinstance(first, DFBranch) and not isinstance(second, DFBranch):
             cond_fst = self.optimizer.optimize(first.condnode)
             appended = copy.deepcopy(second)
-            return DFBranch(cond_fst, self.appendTail(appended, first.truenode), self.appendTail(appended, first.falsenode))
+            return DFBranch(
+                cond_fst,
+                self.appendTail(appended, first.truenode),
+                self.appendTail(appended, first.falsenode),
+            )
         if not isinstance(first, DFBranch) and isinstance(second, DFBranch):
             cond_snd = self.optimizer.optimize(second.condnode)
             appended = copy.deepcopy(first)
-            return DFBranch(cond_snd, self.appendTail(appended, second.truenode), self.appendTail(appended, second.falsenode))
+            return DFBranch(
+                cond_snd,
+                self.appendTail(appended, second.truenode),
+                self.appendTail(appended, second.falsenode),
+            )
 
         if not isinstance(first, DFBranch) and not isinstance(second, DFBranch):
             return second
 
-        raise verror.FormatError('Can not merge trees.')
+        raise verror.FormatError("Can not merge trees.")
 
     def appendTail(self, appended, target):
         if target is None:
             return copy.deepcopy(appended)
         if isinstance(target, DFBranch):
-            return DFBranch(target.condnode, self.appendTail(appended, target.truenode), self.appendTail(appended, target.falsenode))
+            return DFBranch(
+                target.condnode,
+                self.appendTail(appended, target.truenode),
+                self.appendTail(appended, target.falsenode),
+            )
         return target
 
     def splitBindlist(self, bindlist, split_positions):
         if len(bindlist) == 0:
             return ()
-        return self.splitBindPositions(bindlist[0], split_positions) + self.splitBindlist(bindlist[1:], split_positions)
+        return self.splitBindPositions(
+            bindlist[0], split_positions
+        ) + self.splitBindlist(bindlist[1:], split_positions)
 
     def splitBindPositions(self, bind, split_positions):
         if len(split_positions) == 0:
@@ -433,10 +490,18 @@ class VerilogDataflowMerge(object):
             left_lsb = splitpos
             left_msb = msb.value
             left_width = msb.value - splitpos + 1
-            right_tree = reorder.reorder(DFPartselect(copy.deepcopy(
-                tree), DFEvalValue(right_width - 1), DFEvalValue(0)))
-            left_tree = reorder.reorder(DFPartselect(copy.deepcopy(tree), DFEvalValue(
-                msb.value), DFEvalValue(msb.value - left_width + 1)))
+            right_tree = reorder.reorder(
+                DFPartselect(
+                    copy.deepcopy(tree), DFEvalValue(right_width - 1), DFEvalValue(0)
+                )
+            )
+            left_tree = reorder.reorder(
+                DFPartselect(
+                    copy.deepcopy(tree),
+                    DFEvalValue(msb.value),
+                    DFEvalValue(msb.value - left_width + 1),
+                )
+            )
             right_tree = self.optimizer.optimize(right_tree)
             left_tree = self.optimizer.optimize(left_tree)
             left_bind = copy.deepcopy(bind)
@@ -463,14 +528,16 @@ class VerilogDataflowMerge(object):
                 msb = self.optimizer.optimizeConstant(term.msb)
                 lsb = self.optimizer.optimizeConstant(term.lsb)
             elif not isinstance(msb, DFEvalValue) or not isinstance(lsb, DFEvalValue):
-                raise FormatError('MSB and LSB should be constant.')
+                raise FormatError("MSB and LSB should be constant.")
 
             if ptr is None or isinstance(ptr, DFEvalValue):
                 ptrval = None if ptr is None else ptr.value
                 matched_range = self.matchedRange(
-                    tuple(assigned_range), msb.value, lsb.value, ptrval)
+                    tuple(assigned_range), msb.value, lsb.value, ptrval
+                )
                 unmatched_range = self.unmatchedRange(
-                    tuple(matched_range), msb.value, lsb.value, ptrval)
+                    tuple(matched_range), msb.value, lsb.value, ptrval
+                )
                 split_positions |= self.getPositionsFromRange(matched_range, ptrval)
                 assigned_range += matched_range + unmatched_range
 
@@ -521,7 +588,7 @@ class VerilogDataflowMerge(object):
                 unmatched_range.append((last_msb + 1, lsb - 1, ptr))
             last_msb = msb
         if minval is None and maxval is None:
-            return ((search_msb, search_lsb, search_ptr), )
+            return ((search_msb, search_lsb, search_ptr),)
         if search_lsb < minval:
             unmatched_range.append((search_lsb, minval - 1, search_ptr))
         if maxval < search_msb:

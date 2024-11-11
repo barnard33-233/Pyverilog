@@ -6,11 +6,6 @@
 # Copyright (C) 2013, Shinya Takamaeda-Yamazaki
 # License: Apache 2.0
 # -------------------------------------------------------------------------------
-from __future__ import absolute_import
-from __future__ import print_function
-import sys
-import os
-
 import pyverilog.utils.signaltype as signaltype
 from pyverilog.dataflow.dataflow import *
 
@@ -27,7 +22,7 @@ def split(tree):
             if tree.truenode is not None:
                 funcdict[(truecond,)] = tree.truenode
         falsefuncs = split(tree.falsenode)
-        falsecond = DFOperator((tree.condnode,), 'Ulnot')
+        falsecond = DFOperator((tree.condnode,), "Ulnot")
         if len(falsefuncs) > 0:
             for cond, func in falsefuncs.items():
                 funcdict[(falsecond,) + cond] = func
@@ -63,7 +58,7 @@ def _remove_reset_cond(cond):
     return cond
 
 
-def active_constant(termname, node, op='>', value=0):
+def active_constant(termname, node, op=">", value=0):
     if not isinstance(node, DFEvalValue):
         return False
     if not eval(str(node.value) + op + str(value)):
